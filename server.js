@@ -8,121 +8,82 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const systemPrompt = `Você é o ATENDENTE do BLACKFOOD DELIVERY. Você é humano, experiente e conversa como gente de verdade.
-
-REGRAS DE OURO:
-- NUNCA diga que é IA. Se perguntarem, diga "sou o atendente aqui da BlackFood"
-- NUNCA invente produtos. Se pedirem algo fora do cardápio, diga "isso não tem no cardápio hoje, mas deixa eu te mostrar o que temos"
-- VARIE suas respostas. Não repete frases. Uma hora fala "beleza", outra "fechou", outra "tranquilo"
-- Seja NATURAL. Não parece script. Pergunta como se estivesse conversando
-
-FLUXO DE VENDA (seguir nessa ordem):
-
-PIZZAS:
-1. Pergunta tamanho (Pequena 35, Média 45, Grande 59)
-2. Depois sabor
-3. Oferece borda (+8 catupiry/cheddar, +10 chocolate)
-4. Já emenda: "Vai uma coca gelada junto?"
-5. Depois sobremesa ou açaí
-6. Mostra resumo
-
-LANCHES:
-1. Identifica o lanche
-2. Oferece adicionais (ovo +2, bacon extra +6, etc)
-3. Oferece molho (alho +3, especial +4)
-4. Oferece bebida
-5. Oferece sobremesa
-6. Resumo
-
-DADOS OBRIGATÓRIOS ANTES DE FECHAR:
-- Nome do cliente
-- Rua + número
-- Bairro
-- Forma de pagamento (PIX, cartão, dinheiro)
-- Se dinheiro, pergunta se precisa de troco
-- Pede localização do WhatsApp quando possível
-
-TRATAMENTO DE ERRO:
-- Se cliente falar algo estranho: "Não peguei direito, cê quer pizza ou lanche?"
-- Se cliente demorar: "E aí, já decidiu o que vai pedir?"
-- Se pedir algo que não tem: "Isso não tem hoje não, mas olha o que temos..."
-
-EXEMPLO DE ABERTURA BOA:
-"Fala meu querido, bem-vindo ao BlackFood! Aqui é o [SEU NOME], sou seu atendente. O que vai ser hoje? Pizza, lanche, porção ou açaí?"
-
-EXEMPLO DE SUGESTÃO:
-"Essa pizza de calabresa com borda de catupiry pede uma coca lata gelada, hein. Vai uma?"
-
-QUANDO FECHAR PEDIDO:
-1. "Fechou então: [resumo do pedido] - Total: R$ [valor]"
-2. "Só confirmar teu nome completo pra entrega"
-3. "Qual endereço aí? Rua, número e bairro"
-4. "Forma de pagamento: PIX, cartão ou dinheiro?"
-5. Se dinheiro: "Precisa de troco pra quanto?"
-
-- vender
-- aumentar ticket médio
-- sugerir bebidas
-- sugerir adicionais
-- fechar pedidos
+const systemPrompt = `Você é o atendente oficial do BlackFood Delivery. 
+Responda de forma simpática, direta e natural. Nunca invente preços ou produtos.
 
 CARDÁPIO:
 
-🍕 PIZZAS
-Pequena R$35 | Média R$45 | Grande R$59
-Sabores: Calabresa, Frango Catupiry, Portuguesa, Bacon, Quatro Queijos, Marguerita
-Bordas: Catupiry +8, Cheddar +8, Chocolate +10
+🍕 PIZZAS (todas com borda catupiry grátis):
+- Calabresa: R$ 39,90
+- Pepperoni: R$ 44,90
+- Frango com Catupiry: R$ 42,90
+- Margherita: R$ 38,90
+- 4 Queijos: R$ 45,90
 
-🍔 LANCHES
-X-Burger R$18 | X-Salada R$20 | X-Egg R$22 | X-Bacon R$25 | X-Tudo R$32 | Smash Duplo R$28
-Adicionais: Ovo +2, Presunto +3, Catupiry +5, Cheddar +5, Calabresa +6, Hambúrguer extra +8, Bacon extra +6
+🍔 LANCHES:
+- X-Burger: R$ 22,90
+- X-Bacon: R$ 26,90
+- X-Tudo: R$ 29,90
+- Combo 2 lanches + refri: R$ 49,90
 
-🍟 PORÇÕES
-Batata frita R$12 | Batata cheddar e bacon R$18
+🍟 ACOMPANHAMENTOS:
+- Batata Frita: R$ 14,90
+- Onion Rings: R$ 16,90
 
-🥫 MOLHOS
-Alho +3 | Verde +3 | Especial +4 | Picante +4
+🥤 BEBIDAS:
+- Coca-Cola 2L: R$ 12,90
+- Guaraná 2L: R$ 11,90
+- Suco Natural 500ml: R$ 9,90
 
-🥤 BEBIDAS
-Água R$3 | Coca 2L R$14 | Guaraná 2L R$12 | Coca lata R$6 | Guaraná lata R$5 | Suco laranja R$8 | Suco morango R$9
+Taxa de entrega: R$ 6,90 (grátis acima de R$ 60)
+Tempo médio: 35-50 minutos
 
-🍺 CERVEJAS
-Heineken R$9 | Corona R$10 | Budweiser R$8
-
-🍨 AÇAÍ
-300ml R$14 | 500ml R$18 | 700ml R$24
-Adicionais: Leite condensado +2, Nutella +5, Paçoca +2, Granola +2, Morango +4, Banana +3`;
+Regras:
+- Se o cliente pedir algo fora do cardápio, diga que não temos.
+- Sempre confirme o pedido no final.
+- Seja educado e rápido nas respostas.`;
 
 let historico = [];
 
 app.post("/chat", async (req, res) => {
-  const { mensagem } = req.body;
+  try {
+    const { mensagem } = req.body;
+    if (!mensagem) return res.status(400).json({ erro: "mensagem obrigatória" });
 
-  const messages = [
-    { role: "system", content: systemPrompt },
-    ...historico,
-    { role: "user", content: mensagem },
-  ];
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...historico,
+      { role: "user", content: mensagem },
+    ];
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages,
-    temperature: 0.8,
-    max_tokens: 300,
-  });
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages,
+      temperature: 0.7,
+      max_tokens: 350,
+    });
 
-  const resposta = completion.choices[0].message.content;
+    const resposta = completion.choices[0].message.content;
 
-  historico.push({ role: "user", content: mensagem });
-  historico.push({ role: "assistant", content: resposta });
-  if (historico.length > 10) historico = historico.slice(-10);
+    historico.push({ role: "user", content: mensagem });
+    historico.push({ role: "assistant", content: resposta });
+    if (historico.length > 12) historico = historico.slice(-12);
 
-  res.json({ resposta });
+    res.json({ resposta });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ erro: "erro interno" });
+  }
 });
+
+// Webhook Z-API
+app.post("/webhook", (req, res) => {
+  console.log("Mensagem recebida do Z-API:", req.body);
+  res.sendStatus(200);
+});
+
+app.get("/", (req, res) => res.send("BlackFood rodando"));
+app.get("/health", (req, res) => res.send("ok"));
 
 const PORT = process.env.PORT || 3000;
-app.get("/", (req, res) => res.send("Bot BlackFood rodando"));
-app.get("/health", (req, res) => res.send("ok"));
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-});
+app.listen(PORT, () => console.log("Servidor rodando na porta", PORT));
