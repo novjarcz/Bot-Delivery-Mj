@@ -354,6 +354,8 @@ async function enviarMensagemZAPI(phone, message) {
 
   return response.data;
 }
+app.get("/", (req, res) => res.send("Bot BlackFood rodando"));
+app.get("/health", (req, res) => res.send("ok"));
 
 // =========================
 // WEBHOOK
