@@ -1,4 +1,8 @@
+const express = require("express");
 const { OpenAI } = require("openai");
+
+const app = express();
+app.use(express.json());
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -89,32 +93,34 @@ Heineken R$9 | Corona R$10 | Budweiser R$8
 300ml R$14 | 500ml R$18 | 700ml R$24
 Adicionais: Leite condensado +2, Nutella +5, Paçoca +2, Granola +2, Morango +4, Banana +3`;
 
-let historico = []; // guarda as mensagens da conversa
+let historico = [];
 
-async function responderMensagem(mensagemUsuario) {
+app.post("/chat", async (req, res) => {
+  const { mensagem } = req.body;
+
   const messages = [
     { role: "system", content: systemPrompt },
     ...historico,
-    { role: "user", content: mensagemUsuario },
+    { role: "user", content: mensagem },
   ];
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
-    messages: messages,
+    messages,
     temperature: 0.8,
     max_tokens: 300,
   });
 
   const resposta = completion.choices[0].message.content;
 
-  // salva no histórico
-  historico.push({ role: "user", content: mensagemUsuario });
+  historico.push({ role: "user", content: mensagem });
   historico.push({ role: "assistant", content: resposta });
-
-  // mantém histórico pequeno
   if (historico.length > 10) historico = historico.slice(-10);
 
-  return resposta;
-}
+  res.json({ resposta });
+});
 
-module.exports = { responderMensagem };
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+});
