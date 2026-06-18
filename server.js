@@ -121,6 +121,8 @@ app.post("/chat", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+app.get("/", (req, res) => res.send("Bot BlackFood rodando"));
+app.get("/health", (req, res) => res.send("ok"));
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
