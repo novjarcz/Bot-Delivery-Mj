@@ -1,0 +1,4 @@
+node_modules/
+.env
+meu bot/
+*.txt
