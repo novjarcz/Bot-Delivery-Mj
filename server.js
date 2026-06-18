@@ -11,6 +11,7 @@ const openai = new OpenAI({
 
 const ZAPI_INSTANCE = process.env.ZAPI_INSTANCE || "3F3501433C3532F505358ED7FF7B999D";
 const ZAPI_TOKEN = process.env.ZAPI_TOKEN || "2567375A130613D6936DEC06";
+const ZAPI_CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN || "F197089ffd2734c6c95a31d8a907237b9S";
 
 const systemPrompt = `Você é o atendente oficial do BlackFood Delivery. 
 Responda de forma simpática, direta e natural. Nunca invente preços ou produtos.
@@ -114,43 +115,17 @@ async function enviarMensagemZAPI(phone, mensagem) {
       {
         phone: phone,
         message: mensagem,
+      },
+      {
+        headers: {
+          "Client-Token": ZAPI_CLIENT_TOKEN,
+        },
       }
     );
   } catch (err) {
-    console.error("Erro ao enviar no Z-API:", err.message);
+    console.error("Erro ao enviar no Z-API:", err.response?.data || err.message);
   }
 }
-
-app.post("/chat", async (req, res) => {
-  try {
-    const { mensagem } = req.body;
-    if (!mensagem) return res.status(400).json({ erro: "mensagem obrigatória" });
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      ...historico,
-      { role: "user", content: mensagem },
-    ];
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages,
-      temperature: 0.7,
-      max_tokens: 350,
-    });
-
-    const resposta = completion.choices[0].message.content;
-
-    historico.push({ role: "user", content: mensagem });
-    historico.push({ role: "assistant", content: resposta });
-    if (historico.length > 12) historico = historico.slice(-12);
-
-    res.json({ resposta });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ erro: "erro interno" });
-  }
-});
 
 // Webhook Z-API com resposta automática
 app.post("/webhook", async (req, res) => {
