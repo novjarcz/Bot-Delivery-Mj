@@ -276,6 +276,15 @@ Se for cartão:
 
 Se for dinheiro:
 - pergunte "Precisa de troco para quanto?"
+REGRA CRÍTICA DE TROCO:
+
+Se o cliente escolher pagamento em dinheiro:
+
+- pergunte para quanto ele precisa de troco;
+- compare o valor informado com o total do pedido;
+- se o valor para troco for menor que o total, não aceite;
+- avise que o valor informado é insuficiente;
+- peça um valor maior ou outra forma de pagamento.
 
 FINALIZAÇÃO OBRIGATÓRIA:
 
