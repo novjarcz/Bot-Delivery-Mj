@@ -11,7 +11,7 @@ const openai = new OpenAI({
 
 const ZAPI_INSTANCE = process.env.ZAPI_INSTANCE || "3F3501433C3532F505358ED7FF7B999D";
 const ZAPI_TOKEN = process.env.ZAPI_TOKEN || "2567375A130613D6936DEC06";
-const ZAPI_CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN || "F44eed4d839c644dcb3570a561b46c812S";
+const ZAPI_CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN || "Fe50f4e8e40664a07bada2fb92da37137S";
 
 const systemPrompt = `Você é o atendente oficial do BlackFood Delivery. 
 Responda de forma simpática, direta e natural. Nunca invente preços ou produtos.
