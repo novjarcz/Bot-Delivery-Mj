@@ -47,12 +47,25 @@ const openai = new OpenAI({
 // CONFIGURAÇÕES
 // =====================================================
 
-// Espera 6 segundos após a ÚLTIMA mensagem do cliente.
-// Se chegar outra mensagem, começa a contar de novo.
 const DEBOUNCE_MS = 6000;
 
-// Memória por cliente.
+// 1 minuto.
+const LEMBRETE_MS = 60 * 1000;
+
+// 4 horas.
+const EXPIRACAO_SESSAO_MS = 4 * 60 * 60 * 1000;
+
 const MAX_MESSAGES = 20;
+
+// REGRA ATUAL:
+// subtotal > R$60 = grátis.
+// subtotal <= R$60 = R$6,90.
+const TAXA_ENTREGA = 6.90;
+const LIMITE_ENTREGA_GRATIS = 60;
+
+// Tolerância para conferir pagamentos.
+// Evita problema idiota de ponto flutuante.
+const TOLERANCIA_VALOR = 0.02;
 
 // =====================================================
 // MEMÓRIA
@@ -62,13 +75,8 @@ const historicoPorTelefone = {};
 const bufferPorTelefone = {};
 const timerPorTelefone = {};
 const filaPorTelefone = {};
-
-// Guarda estados críticos que não devemos deixar
-// somente na interpretação da IA.
 const estadoPorTelefone = {};
 
-// Evita processar duas vezes o mesmo webhook
-// quando a Z-API enviar messageId.
 const messageIdsProcessados = new Map();
 
 // =====================================================
@@ -93,7 +101,7 @@ Hoje temos:
 Me fala o que deu vontade que eu monto seu pedido rapidinho. 😋`;
 
 // =====================================================
-// PROMPT PRINCIPAL
+// PROMPT
 // =====================================================
 
 const systemPrompt = `
@@ -106,69 +114,91 @@ IDENTIDADE
 - Você trabalha na MJ Pizzaria.
 - Seja simpático, natural, rápido e profissional.
 - Nunca invente produtos, preços, descontos ou informações.
-- Use APENAS o cardápio oficial abaixo.
+- Use APENAS o cardápio oficial.
 - Nunca responda apenas "Como posso ajudar?".
-- Não repita "MJ Pizzaria" em todas as mensagens.
-- Evite textos enormes.
 - Não seja insistente.
+- Não faça perguntas repetidas.
 
 ========================================
-COMO INTERPRETAR AS MENSAGENS
+INÍCIO DO ATENDIMENTO
 ========================================
 
-O cliente pode escrever várias mensagens curtas seguidas.
+Qualquer primeira mensagem inicia um atendimento.
 
-Exemplo recebido:
+O cliente pode começar com:
+
+"oi"
+"bom dia"
+"boa boa"
+"quero pedir"
+"tem pizza?"
+"manda o cardápio"
+"quero uma grande"
+
+Nunca exija uma saudação específica.
+
+Se a primeira mensagem já contiver intenção de compra,
+responda diretamente à intenção e não obrigue o cliente
+a passar por uma saudação genérica antes.
+
+========================================
+MENSAGENS PICADAS
+========================================
+
+O sistema pode juntar várias mensagens seguidas.
+
+Exemplo:
 
 "oi
 eu
 quero
 uma pizza
 grande
-de calabresa"
+calabresa"
 
-Interprete tudo como UMA fala:
+Interprete como UMA fala:
 
 "Oi, eu quero uma pizza grande de calabresa."
 
-Nunca trate cada linha como uma intenção separada.
-
-Se o cliente informar várias coisas de uma vez:
-- aproveite TODAS;
-- não pergunte novamente o que já foi informado;
-- avance diretamente para a próxima informação realmente necessária.
-
-Antes de fazer qualquer pergunta:
-VERIFIQUE se o cliente já respondeu anteriormente.
-
-Nunca faça perguntas repetidas.
+Use todas as informações fornecidas.
+Não pergunte novamente o que já foi informado.
 
 ========================================
-REGRA CRÍTICA DE CONTEXTO
+REGRA DE OURO
 ========================================
 
-A pergunta mais recente determina a etapa atual da conversa.
+Nunca transforme uma pergunta em escolha.
 
-Porém, se o cliente responder algo que claramente pertence à etapa anterior,
-entenda como uma correção ou complemento em vez de associá-lo à categoria errada.
-
-EXEMPLO:
-
-Você perguntou sobre bebida.
+Exemplo:
 
 Cliente:
-"pode ser catupiry"
+"calabresa
+tem borda?"
 
-Catupiry NÃO é bebida.
-Isso provavelmente é uma escolha ou correção de borda.
+Isso significa:
+- sabor escolhido: Calabresa;
+- cliente está perguntando se existem bordas.
 
-Nesse caso:
-- confirme corretamente a borda Catupiry;
-- depois volte a perguntar qual bebida ele deseja.
+NÃO significa que ele escolheu Catupiry.
 
-NUNCA confirme itens em categorias incompatíveis.
+Correto:
 
-REGRAS ABSOLUTAS:
+"Tem sim 😋
+• Catupiry — R$8
+• Cheddar — R$8
+• Chocolate — R$10
+
+Qual você prefere?"
+
+Se houver ambiguidade:
+PERGUNTE.
+Nunca invente uma escolha.
+
+========================================
+CONTEXTO E CATEGORIAS
+========================================
+
+Nunca associe produtos a categorias erradas.
 
 BORDAS:
 - Catupiry
@@ -203,83 +233,35 @@ Nunca diga:
 "bebida de Catupiry"
 "molho Coca-Cola"
 "borda de Guaraná"
-ou qualquer outra combinação incompatível.
-
-Se houver dúvida real sobre o que o cliente quis dizer:
-faça UMA pergunta curta de confirmação.
-Nunca invente.
 
 ========================================
-OBJETIVO DE VENDA
+FLUXO DE PIZZA
 ========================================
 
-Seu trabalho é:
-
-- montar corretamente o pedido;
-- facilitar a compra;
-- oferecer adicionais relevantes;
-- aumentar o ticket médio sem ser inconveniente;
-- coletar os dados da entrega;
-- coletar pagamento;
-- finalizar somente depois da confirmação.
-
-Quando o cliente recusar uma oferta:
-avance imediatamente.
-Nunca ofereça novamente a mesma coisa.
-
-========================================
-FLUXO PARA PIZZAS
-========================================
-
-Quando o cliente disser apenas:
-"quero pizza"
-
-PASSO 1 — TAMANHO
-
-Mostre:
+Se faltar tamanho, mostre:
 
 🍕 Pequena, 4 fatias — R$35
 🍕 Média, 6 fatias — R$45
 🍕 Grande, 8 fatias — R$59
 
-Pergunte qual prefere.
+Depois:
 
-Se ele já disser:
-"quero pizza grande"
+1. tamanho;
+2. sabor;
+3. borda;
+4. porção/molho;
+5. bebida;
+6. açaí;
+7. resumo.
 
-NÃO pergunte tamanho.
-Avance para sabor.
+Se o cliente já informar uma etapa:
+NÃO pergunte novamente.
 
-PASSO 2 — SABOR
+========================================
+UPSSELL
+========================================
 
-Pergunte o sabor somente se ainda não tiver sido informado.
-
-Sabores:
-- Calabresa
-- Frango com catupiry
-- Portuguesa
-- Bacon
-- Quatro queijos
-- Marguerita
-
-PASSO 3 — BORDA
-
-Depois de definir tamanho e sabor, ofereça:
-
-- Catupiry — R$8
-- Cheddar — R$8
-- Chocolate — R$10
-
-Se o cliente recusar:
-avance.
-
-PASSO 4 — PORÇÃO + MOLHO
-
-Depois da borda, faça UMA única oferta de acompanhamento.
-
-Exemplo de estilo:
-
-"Quer aproveitar e acrescentar uma porção ou molho? 😋
+Depois da borda, ofereça uma única vez:
 
 🍟 Batata frita — R$12
 🥓 Batata com cheddar e bacon — R$18
@@ -288,66 +270,22 @@ Molhos:
 • Alho — R$3
 • Verde — R$3
 • Especial — R$4
-• Picante — R$4"
+• Picante — R$4
 
-Não obrigue o cliente a escolher.
-Se disser não, avance imediatamente para bebida.
+Se o cliente recusar:
+avance para bebidas.
 
-PASSO 5 — BEBIDA
+Depois ofereça bebida.
 
-Ofereça bebidas.
+Depois ofereça açaí uma única vez.
 
-Se o cliente já tiver pedido bebida anteriormente:
-não pergunte novamente.
-
-PASSO 6 — AÇAÍ
-
-Depois da bebida, ofereça açaí uma única vez:
-
-- 300 ml — R$14
-- 500 ml — R$18
-- 700 ml — R$24
-
-Não diga genericamente que existem "outras sobremesas",
-pois o cardápio informado contém somente açaí nessa categoria.
-
-Se recusar:
-avance.
-
-PASSO 7 — RESUMO
-
-Mostre o resumo parcial do pedido.
+Nunca ofereça novamente algo já recusado.
 
 ========================================
-FLUXO PARA LANCHES
-========================================
-
-1. Identifique o lanche.
-2. Confirme item e preço.
-3. Ofereça adicionais.
-4. Ofereça porção/molho.
-5. Ofereça bebida.
-6. Ofereça açaí.
-7. Mostre resumo.
-
-Se alguma informação já tiver sido dada:
-não pergunte novamente.
-
-========================================
-FLUXO PARA AÇAÍ
-========================================
-
-1. Pergunte o tamanho somente se ainda não souber.
-2. Ofereça os adicionais.
-3. Mostre subtotal.
-4. Pergunte se deseja acrescentar mais alguma coisa.
-
-========================================
-CARDÁPIO OFICIAL
+CARDÁPIO
 ========================================
 
 PIZZAS:
-
 - Pequena, 4 fatias — R$35
 - Média, 6 fatias — R$45
 - Grande, 8 fatias — R$59
@@ -366,7 +304,6 @@ Bordas:
 - Chocolate — R$10
 
 LANCHES:
-
 - X-Burger — R$18
 - X-Salada — R$20
 - X-Egg — R$22
@@ -375,7 +312,6 @@ LANCHES:
 - Smash Duplo — R$28
 
 Adicionais:
-
 - Ovo — R$2
 - Presunto — R$3
 - Catupiry — R$5
@@ -385,19 +321,16 @@ Adicionais:
 - Bacon extra — R$6
 
 PORÇÕES:
-
 - Batata frita — R$12
 - Batata com cheddar e bacon — R$18
 
 MOLHOS:
-
 - Alho — R$3
 - Verde — R$3
 - Especial — R$4
 - Picante — R$4
 
 BEBIDAS:
-
 - Água — R$3
 - Coca-Cola 2L — R$14
 - Guaraná 2L — R$12
@@ -407,19 +340,16 @@ BEBIDAS:
 - Suco natural de morango — R$9
 
 CERVEJAS:
-
 - Heineken — R$9
 - Corona — R$10
 - Budweiser — R$8
 
 AÇAÍ:
-
 - 300 ml — R$14
 - 500 ml — R$18
 - 700 ml — R$24
 
-Adicionais do açaí:
-
+Adicionais:
 - Leite condensado — R$2
 - Nutella — R$5
 - Paçoca — R$2
@@ -431,49 +361,33 @@ Adicionais do açaí:
 ENTREGA
 ========================================
 
-Taxa padrão: R$6,90.
+O backend controla taxa e total.
 
-Pedido com subtotal MAIOR que R$60:
+Regra atual:
+
+Subtotal MAIOR que R$60:
 entrega grátis.
 
-Pedido com subtotal igual ou menor que R$60:
-aplique R$6,90.
+Subtotal igual ou menor que R$60:
+taxa R$6,90.
 
-Tempo médio:
-35 a 50 minutos.
-
-========================================
-CÁLCULO
-========================================
-
-- Some somente itens realmente escolhidos.
-- Nunca cobre item apenas oferecido.
-- Mostre os preços dos itens.
-- Revise subtotal.
-- Revise taxa.
-- Revise total.
-
-Se um valor de troco for informado pelo SISTEMA,
-use EXATAMENTE o valor calculado pelo sistema.
-
-NUNCA recalcule ou altere um troco que o sistema já informou.
+Nunca altere uma taxa ou total informado pelo SISTEMA.
 
 ========================================
-DADOS PARA ENTREGA
+DADOS DA ENTREGA
 ========================================
 
-Antes do pagamento, obtenha obrigatoriamente:
+Obrigatórios:
 
 - nome;
 - rua;
 - número;
 - bairro.
 
-Ponto de referência:
-opcional.
+Opcionais:
 
-Localização compartilhada:
-opcional.
+- referência;
+- localização.
 
 Se o cliente mandar:
 
@@ -482,7 +396,7 @@ Alecrim 516
 Figueira
 casa amarela"
 
-entenda:
+interprete:
 
 Nome: Michel
 Rua: Alecrim
@@ -490,93 +404,70 @@ Número: 516
 Bairro: Figueira
 Referência: casa amarela
 
-Não pergunte novamente nenhum desses dados.
-
-Se informar apenas rua:
-peça número e bairro.
-
-Se informar rua + número:
-peça somente bairro.
-
-Se informar rua + número + bairro:
-não pergunte novamente.
-
-Nunca avance ao pagamento faltando rua, número ou bairro.
+Nunca pergunte novamente dados já informados.
 
 ========================================
 PAGAMENTO
 ========================================
 
-Formas:
+Aceite:
 
-- PIX
-- cartão
-- dinheiro
+- PIX;
+- cartão;
+- dinheiro;
+- pagamento misto.
 
-PIX:
-confirme PIX e prossiga.
+Pagamento misto pode ser dito naturalmente:
 
-Cartão:
-pergunte crédito ou débito se ainda não tiver sido informado.
+"100 no dinheiro e 33,90 no pix"
+"100 no dinheiro e o resto no pix"
+"metade dinheiro metade cartão"
+"50 no pix e o restante no dinheiro"
 
-Dinheiro:
+Quando o backend enviar uma divisão VALIDADA,
+use exatamente aquela divisão.
+
+Não tente recalcular.
+
+Se houver cartão sem informar crédito/débito,
+pergunte somente isso.
+
+========================================
+TROCO
+========================================
+
+Se pagamento for somente dinheiro:
 pergunte se precisa de troco.
 
-========================================
-REGRA ABSOLUTA DE TROCO
-========================================
+Se disser:
 
-Se o cliente responder:
-
-- não
-- nao
-- não precisa
-- nao precisa
-- sem troco
-- não preciso
-- nao preciso
+"não"
+"nao"
+"sem troco"
+"não precisa"
+"não preciso"
 
 significa:
-
-PAGAMENTO EM DINHEIRO SEM TROCO.
+SEM TROCO.
 
 Nunca transforme "não" em número.
 
-Se precisar de troco:
-pergunte "Para quanto?"
+Em pagamento misto:
+não pergunte troco automaticamente apenas porque
+uma parte é em dinheiro.
 
-Se o sistema informar:
-
-TOTAL: R$81
-PAGAMENTO: R$100
-TROCO CORRETO: R$19
-
-você DEVE usar R$19.
-
-Nunca diga:
-"troco para R$10"
-ou outro valor antigo.
-
-Diferencie:
-
-"pagar com R$100"
-de
-"troco de R$19".
-
-Forma correta:
-
-"Pagamento em dinheiro: R$100.
-Troco: R$19."
+Só pergunte troco se houver indicação de que o cliente
+vai entregar uma quantia em espécie maior que a parte
+que precisa pagar em dinheiro.
 
 ========================================
 FINALIZAÇÃO
 ========================================
 
-Antes da confirmação:
+Mostre:
 
 📋 RESUMO DO PEDIDO
 
-Liste:
 - itens;
 - adicionais;
 - porções;
@@ -584,22 +475,16 @@ Liste:
 - bebidas;
 - açaí;
 - subtotal;
-- taxa;
+- entrega;
 - total.
 
 Depois:
 
-DADOS DE ENTREGA:
-- Nome
-- Endereço completo
-- Referência, quando houver
+DADOS DE ENTREGA
 
-PAGAMENTO:
-- Forma
-- Valor recebido, se dinheiro
-- Troco correto, se necessário
+PAGAMENTO
 
-Depois escreva:
+Depois:
 
 ⚠️ Este atendimento é somente uma demonstração da automação da MJ Pizzaria. Nenhum pedido real será produzido ou cobrado.
 
@@ -611,7 +496,135 @@ Nunca finalize antes da confirmação.
 `;
 
 // =====================================================
-// FUNÇÕES AUXILIARES
+// ESTADO
+// =====================================================
+
+function criarEstadoNovo() {
+  return {
+    aguardandoTroco: false,
+    totalAtual: null,
+
+    ultimaAtividade: Date.now(),
+
+    lembreteEnviado: false,
+    timerLembrete: null,
+
+    sessaoAtiva: true,
+  };
+}
+
+function obterEstado(phone) {
+  if (!estadoPorTelefone[phone]) {
+    estadoPorTelefone[phone] =
+      criarEstadoNovo();
+  }
+
+  return estadoPorTelefone[phone];
+}
+
+function limparTimerLembrete(phone) {
+  const estado = estadoPorTelefone[phone];
+
+  if (estado?.timerLembrete) {
+    clearTimeout(estado.timerLembrete);
+    estado.timerLembrete = null;
+  }
+}
+
+function limparSessao(phone) {
+  limparTimerLembrete(phone);
+
+  if (timerPorTelefone[phone]) {
+    clearTimeout(timerPorTelefone[phone]);
+    delete timerPorTelefone[phone];
+  }
+
+  delete bufferPorTelefone[phone];
+  delete historicoPorTelefone[phone];
+  delete estadoPorTelefone[phone];
+
+  console.log(
+    `SESSÃO LIMPA: ${phone}`
+  );
+}
+
+function sessaoExpirada(phone) {
+  const estado = estadoPorTelefone[phone];
+
+  if (!estado) {
+    return false;
+  }
+
+  return (
+    Date.now() - estado.ultimaAtividade >
+    EXPIRACAO_SESSAO_MS
+  );
+}
+
+function registrarAtividade(phone) {
+  const estado = obterEstado(phone);
+  estado.ultimaAtividade = Date.now();
+}
+
+function agendarLembrete(phone) {
+  const estado = obterEstado(phone);
+
+  limparTimerLembrete(phone);
+
+  if (estado.lembreteEnviado) {
+    return;
+  }
+
+  estado.timerLembrete = setTimeout(
+    async () => {
+      try {
+        const atual =
+          estadoPorTelefone[phone];
+
+        if (
+          !atual ||
+          atual.lembreteEnviado
+        ) {
+          return;
+        }
+
+        atual.lembreteEnviado = true;
+        atual.timerLembrete = null;
+
+        await enviarMensagemZAPI(
+          phone,
+          "Opa 😊 ficou com alguma dúvida? Se quiser, posso continuar seu pedido por aqui."
+        );
+
+        console.log(
+          `LEMBRETE ENVIADO: ${phone}`
+        );
+      } catch (error) {
+        console.error(
+          "ERRO AO ENVIAR LEMBRETE:",
+          error.response?.data ||
+            error.message
+        );
+      }
+    },
+    LEMBRETE_MS
+  );
+}
+
+// Limpa sessões antigas da memória periodicamente.
+setInterval(() => {
+  for (
+    const phone of
+    Object.keys(estadoPorTelefone)
+  ) {
+    if (sessaoExpirada(phone)) {
+      limparSessao(phone);
+    }
+  }
+}, 30 * 60 * 1000);
+
+// =====================================================
+// TEXTO
 // =====================================================
 
 function normalizarTexto(texto = "") {
@@ -622,21 +635,11 @@ function normalizarTexto(texto = "") {
     .trim();
 }
 
-function obterEstado(phone) {
-  if (!estadoPorTelefone[phone]) {
-    estadoPorTelefone[phone] = {
-      aguardandoTroco: false,
-      totalAtual: null,
-    };
-  }
+function ehSaudacaoPura(texto) {
+  const mensagem =
+    normalizarTexto(texto);
 
-  return estadoPorTelefone[phone];
-}
-
-function ehSaudacao(texto) {
-  const mensagem = normalizarTexto(texto);
-
-  const saudacoes = [
+  return [
     "oi",
     "oii",
     "oiii",
@@ -645,15 +648,26 @@ function ehSaudacao(texto) {
     "bom dia",
     "boa tarde",
     "boa noite",
-    "menu",
-    "cardapio",
-  ];
+  ].includes(mensagem);
+}
 
-  return saudacoes.includes(mensagem);
+function ehConfirmacao(texto) {
+  const msg = normalizarTexto(texto);
+
+  return [
+    "sim",
+    "pode",
+    "pode sim",
+    "confirmo",
+    "confirmar",
+    "pode confirmar",
+    "fechado",
+  ].includes(msg);
 }
 
 function possuiNegacaoTroco(texto) {
-  const mensagem = normalizarTexto(texto);
+  const mensagem =
+    normalizarTexto(texto);
 
   return (
     mensagem === "nao" ||
@@ -665,7 +679,8 @@ function possuiNegacaoTroco(texto) {
 }
 
 function mensagemEscolheDinheiro(texto) {
-  const mensagem = normalizarTexto(texto);
+  const mensagem =
+    normalizarTexto(texto);
 
   return (
     mensagem === "dinheiro" ||
@@ -677,7 +692,8 @@ function mensagemEscolheDinheiro(texto) {
 }
 
 function possuiOpcaoBorda(texto) {
-  const mensagem = normalizarTexto(texto);
+  const mensagem =
+    normalizarTexto(texto);
 
   return (
     mensagem.includes("catupiry") ||
@@ -687,7 +703,8 @@ function possuiOpcaoBorda(texto) {
 }
 
 function possuiBebida(texto) {
-  const mensagem = normalizarTexto(texto);
+  const mensagem =
+    normalizarTexto(texto);
 
   return (
     mensagem.includes("coca") ||
@@ -700,23 +717,45 @@ function possuiBebida(texto) {
   );
 }
 
-function ultimaRespostaAssistente(historico = []) {
-  for (let i = historico.length - 1; i >= 0; i--) {
-    if (historico[i]?.role === "assistant") {
-      return historico[i].content || "";
+// =====================================================
+// HISTÓRICO
+// =====================================================
+
+function ultimaRespostaAssistente(
+  historico = []
+) {
+  for (
+    let i = historico.length - 1;
+    i >= 0;
+    i--
+  ) {
+    if (
+      historico[i]?.role ===
+      "assistant"
+    ) {
+      return (
+        historico[i].content || ""
+      );
     }
   }
 
   return "";
 }
 
-function estaPerguntandoPagamento(historico = []) {
-  const ultima = normalizarTexto(
-    ultimaRespostaAssistente(historico)
-  );
+function estaPerguntandoPagamento(
+  historico = []
+) {
+  const ultima =
+    normalizarTexto(
+      ultimaRespostaAssistente(
+        historico
+      )
+    );
 
   return (
-    ultima.includes("forma de pagamento") ||
+    ultima.includes(
+      "forma de pagamento"
+    ) ||
     (
       ultima.includes("pix") &&
       ultima.includes("cartao") &&
@@ -725,23 +764,51 @@ function estaPerguntandoPagamento(historico = []) {
   );
 }
 
-function detectarContextoAtual(historico = []) {
-  const ultima = normalizarTexto(
-    ultimaRespostaAssistente(historico)
+function estaAguardandoConfirmacaoFinal(
+  historico = []
+) {
+  const ultima =
+    normalizarTexto(
+      ultimaRespostaAssistente(
+        historico
+      )
+    );
+
+  return ultima.includes(
+    "posso confirmar esta demonstracao"
   );
+}
+
+function detectarContextoAtual(
+  historico = []
+) {
+  const ultima =
+    normalizarTexto(
+      ultimaRespostaAssistente(
+        historico
+      )
+    );
 
   if (
     ultima.includes("qual bebida") ||
-    ultima.includes("bebida voce prefere") ||
-    ultima.includes("bebida para acompanhar")
+    ultima.includes(
+      "bebida voce prefere"
+    ) ||
+    ultima.includes(
+      "bebida para acompanhar"
+    )
   ) {
     return "BEBIDA";
   }
 
   if (
     ultima.includes("qual borda") ||
-    ultima.includes("adicionar uma borda") ||
-    ultima.includes("opcao de borda")
+    ultima.includes(
+      "adicionar uma borda"
+    ) ||
+    ultima.includes(
+      "opcao de borda"
+    )
   ) {
     return "BORDA";
   }
@@ -754,7 +821,9 @@ function detectarContextoAtual(historico = []) {
   }
 
   if (
-    ultima.includes("forma de pagamento")
+    ultima.includes(
+      "forma de pagamento"
+    )
   ) {
     return "PAGAMENTO";
   }
@@ -766,8 +835,17 @@ function detectarContextoAtual(historico = []) {
   return null;
 }
 
-function converterValorBrasileiro(valor) {
-  if (valor === null || valor === undefined) {
+// =====================================================
+// DINHEIRO
+// =====================================================
+
+function converterValorBrasileiro(
+  valor
+) {
+  if (
+    valor === null ||
+    valor === undefined
+  ) {
     return null;
   }
 
@@ -776,28 +854,43 @@ function converterValorBrasileiro(valor) {
     .replace(/\s/g, "")
     .trim();
 
-  if (limpo.includes(",")) {
+  if (
+    limpo.includes(".") &&
+    limpo.includes(",")
+  ) {
     limpo = limpo
       .replace(/\./g, "")
       .replace(",", ".");
+  } else if (limpo.includes(",")) {
+    limpo =
+      limpo.replace(",", ".");
   }
 
-  const numero = Number(limpo);
+  const numero =
+    Number(limpo);
 
   return Number.isFinite(numero)
     ? numero
     : null;
 }
 
-function extrairValorMonetario(texto) {
-  const normalizado = String(texto)
-    .replace(/R\$/gi, "")
-    .trim();
+function extrairValorMonetario(
+  texto
+) {
+  const normalizado =
+    String(texto)
+      .replace(/R\$/gi, "")
+      .trim();
 
   const matches =
-    normalizado.match(/\d+(?:[.,]\d{1,2})?/g);
+    normalizado.match(
+      /\d+(?:[.,]\d{1,2})?/g
+    );
 
-  if (!matches || matches.length === 0) {
+  if (
+    !matches ||
+    matches.length === 0
+  ) {
     return null;
   }
 
@@ -806,8 +899,51 @@ function extrairValorMonetario(texto) {
   );
 }
 
-function extrairUltimoTotal(historico = []) {
-  for (let i = historico.length - 1; i >= 0; i--) {
+function formatarReal(valor) {
+  return Number(valor).toLocaleString(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL",
+    }
+  );
+}
+
+// =====================================================
+// TOTAL / TAXA NO BACKEND
+// =====================================================
+
+function calcularEntrega(subtotal) {
+  return subtotal >
+    LIMITE_ENTREGA_GRATIS
+    ? 0
+    : TAXA_ENTREGA;
+}
+
+function extrairSubtotal(texto) {
+  const regex =
+    /subtotal\s*:?\s*R\$\s*([\d.]+(?:,\d{1,2})?)/i;
+
+  const match =
+    String(texto).match(regex);
+
+  if (!match) {
+    return null;
+  }
+
+  return converterValorBrasileiro(
+    match[1]
+  );
+}
+
+function extrairUltimoTotal(
+  historico = []
+) {
+  for (
+    let i = historico.length - 1;
+    i >= 0;
+    i--
+  ) {
     const item = historico[i];
 
     if (
@@ -826,40 +962,360 @@ function extrairUltimoTotal(historico = []) {
       ...texto.matchAll(regex),
     ];
 
-    if (encontrados.length > 0) {
+    if (
+      encontrados.length > 0
+    ) {
       const ultimo =
-        encontrados[encontrados.length - 1][1];
+        encontrados[
+          encontrados.length - 1
+        ][1];
 
-      return converterValorBrasileiro(ultimo);
+      return converterValorBrasileiro(
+        ultimo
+      );
     }
   }
 
   return null;
 }
 
-function formatarReal(valor) {
-  return Number(valor).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
+function corrigirTotaisNoTexto(
+  texto,
+  phone
+) {
+  const subtotal =
+    extrairSubtotal(texto);
+
+  if (subtotal === null) {
+    return texto;
+  }
+
+  const entrega =
+    calcularEntrega(subtotal);
+
+  const total =
+    subtotal + entrega;
+
+  const estado =
+    obterEstado(phone);
+
+  estado.totalAtual = total;
+
+  let corrigido = String(texto);
+
+  // Corrige linha de entrega se existir.
+  corrigido = corrigido.replace(
+    /entrega\s*:.*$/im,
+    entrega === 0
+      ? "Entrega: Grátis"
+      : `Entrega: ${formatarReal(entrega)}`
+  );
+
+  // Se não havia linha de entrega,
+  // tenta inserir antes do Total.
+  if (
+    !/entrega\s*:/i.test(corrigido) &&
+    /total\s*:/i.test(corrigido)
+  ) {
+    corrigido = corrigido.replace(
+      /total\s*:/i,
+      `${
+        entrega === 0
+          ? "Entrega: Grátis"
+          : `Entrega: ${formatarReal(entrega)}`
+      }\nTotal:`
+    );
+  }
+
+  // Corrige total.
+  corrigido = corrigido.replace(
+    /(?:valor\s+total|total)\s*:?\s*R\$\s*[\d.]+(?:,\d{1,2})?/i,
+    `Total: ${formatarReal(total)}`
+  );
+
+  return corrigido;
+}
+
+// =====================================================
+// PAGAMENTO MISTO
+// =====================================================
+
+function detectarMetodoPagamento(
+  segmento
+) {
+  const s =
+    normalizarTexto(segmento);
+
+  if (s.includes("pix")) {
+    return "PIX";
+  }
+
+  if (
+    s.includes("dinheiro") ||
+    s.includes("especie")
+  ) {
+    return "DINHEIRO";
+  }
+
+  if (
+    s.includes("cartao") ||
+    s.includes("credito") ||
+    s.includes("debito")
+  ) {
+    if (s.includes("credito")) {
+      return "CARTÃO CRÉDITO";
+    }
+
+    if (s.includes("debito")) {
+      return "CARTÃO DÉBITO";
+    }
+
+    return "CARTÃO";
+  }
+
+  return null;
+}
+
+function extrairPagamentoMisto(
+  texto,
+  total
+) {
+  if (
+    total === null ||
+    total === undefined
+  ) {
+    return null;
+  }
+
+  const msg =
+    normalizarTexto(texto);
+
+  const metodosPresentes = [
+    msg.includes("pix"),
+    msg.includes("dinheiro"),
+    msg.includes("cartao") ||
+      msg.includes("credito") ||
+      msg.includes("debito"),
+  ].filter(Boolean).length;
+
+  if (metodosPresentes < 2) {
+    return null;
+  }
+
+  // Exemplo:
+  // metade dinheiro metade cartão
+  if (
+    msg.includes("metade") &&
+    metodosPresentes === 2
+  ) {
+    const metade = total / 2;
+
+    const partes = [];
+
+    if (msg.includes("dinheiro")) {
+      partes.push({
+        metodo: "DINHEIRO",
+        valor: metade,
+      });
+    }
+
+    if (msg.includes("pix")) {
+      partes.push({
+        metodo: "PIX",
+        valor: metade,
+      });
+    }
+
+    if (
+      msg.includes("cartao") ||
+      msg.includes("credito") ||
+      msg.includes("debito")
+    ) {
+      partes.push({
+        metodo:
+          msg.includes("credito")
+            ? "CARTÃO CRÉDITO"
+            : msg.includes("debito")
+            ? "CARTÃO DÉBITO"
+            : "CARTÃO",
+        valor: metade,
+      });
+    }
+
+    if (partes.length === 2) {
+      return partes;
+    }
+  }
+
+  // Divide principalmente por "e".
+  const segmentos =
+    msg
+      .split(/\s+e\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+  if (segmentos.length < 2) {
+    return null;
+  }
+
+  const partes = [];
+
+  let indiceRestante = -1;
+  let somaConhecida = 0;
+
+  for (
+    let i = 0;
+    i < segmentos.length;
+    i++
+  ) {
+    const segmento =
+      segmentos[i];
+
+    const metodo =
+      detectarMetodoPagamento(
+        segmento
+      );
+
+    if (!metodo) {
+      continue;
+    }
+
+    const ehRestante =
+      segmento.includes("resto") ||
+      segmento.includes("restante");
+
+    if (ehRestante) {
+      partes.push({
+        metodo,
+        valor: null,
+      });
+
+      indiceRestante =
+        partes.length - 1;
+
+      continue;
+    }
+
+    const valor =
+      extrairValorMonetario(
+        segmento
+      );
+
+    if (valor !== null) {
+      partes.push({
+        metodo,
+        valor,
+      });
+
+      somaConhecida += valor;
+    }
+  }
+
+  if (
+    partes.length < 2
+  ) {
+    return null;
+  }
+
+  if (
+    indiceRestante >= 0
+  ) {
+    const restante =
+      total - somaConhecida;
+
+    if (restante < -TOLERANCIA_VALOR) {
+      return {
+        erro:
+          "Os valores informados ultrapassam o total do pedido.",
+      };
+    }
+
+    partes[indiceRestante].valor =
+      Math.max(0, restante);
+  }
+
+  if (
+    partes.some(
+      (p) => p.valor === null
+    )
+  ) {
+    return null;
+  }
+
+  return partes;
+}
+
+function validarPagamentoMisto(
+  partes,
+  total
+) {
+  if (
+    !Array.isArray(partes)
+  ) {
+    return {
+      valido: false,
+      motivo:
+        "Não consegui entender a divisão do pagamento.",
+    };
+  }
+
+  const soma =
+    partes.reduce(
+      (acc, parte) =>
+        acc + Number(parte.valor || 0),
+      0
+    );
+
+  const diferenca =
+    Math.abs(soma - total);
+
+  return {
+    valido:
+      diferenca <=
+      TOLERANCIA_VALOR,
+
+    soma,
+
+    diferenca,
+  };
+}
+
+function formatarPagamentoMisto(
+  partes
+) {
+  return partes
+    .map(
+      (parte) =>
+        `${parte.metodo}: ${formatarReal(parte.valor)}`
+    )
+    .join("\n");
 }
 
 // =====================================================
 // FILA
 // =====================================================
 
-function enfileirarPorTelefone(phone, tarefa) {
+function enfileirarPorTelefone(
+  phone,
+  tarefa
+) {
   const anterior =
-    filaPorTelefone[phone] || Promise.resolve();
+    filaPorTelefone[phone] ||
+    Promise.resolve();
 
-  const atual = anterior
-    .catch(() => {})
-    .then(tarefa);
+  const atual =
+    anterior
+      .catch(() => {})
+      .then(tarefa);
 
-  filaPorTelefone[phone] = atual;
+  filaPorTelefone[phone] =
+    atual;
 
   atual.finally(() => {
-    if (filaPorTelefone[phone] === atual) {
+    if (
+      filaPorTelefone[phone] ===
+      atual
+    ) {
       delete filaPorTelefone[phone];
     }
   });
@@ -871,73 +1327,113 @@ function enfileirarPorTelefone(phone, tarefa) {
 // DEBOUNCE
 // =====================================================
 
-function acumularMensagem(phone, mensagem) {
-  if (!bufferPorTelefone[phone]) {
+function acumularMensagem(
+  phone,
+  mensagem
+) {
+  if (
+    !bufferPorTelefone[phone]
+  ) {
     bufferPorTelefone[phone] = [];
   }
 
-  bufferPorTelefone[phone].push(mensagem);
+  bufferPorTelefone[phone].push(
+    mensagem
+  );
 
-  if (timerPorTelefone[phone]) {
-    clearTimeout(timerPorTelefone[phone]);
+  if (
+    timerPorTelefone[phone]
+  ) {
+    clearTimeout(
+      timerPorTelefone[phone]
+    );
   }
 
-  timerPorTelefone[phone] = setTimeout(() => {
-    const mensagens =
-      bufferPorTelefone[phone] || [];
+  timerPorTelefone[phone] =
+    setTimeout(() => {
+      const mensagens =
+        bufferPorTelefone[phone] || [];
 
-    const mensagemCompleta =
-      mensagens.join("\n").trim();
+      const mensagemCompleta =
+        mensagens
+          .join("\n")
+          .trim();
 
-    delete bufferPorTelefone[phone];
-    delete timerPorTelefone[phone];
+      delete bufferPorTelefone[phone];
+      delete timerPorTelefone[phone];
 
-    if (!mensagemCompleta) {
-      return;
-    }
+      if (!mensagemCompleta) {
+        return;
+      }
 
-    console.log(
-      `MENSAGEM AGRUPADA DE ${phone}:`,
-      mensagemCompleta
-    );
-
-    enfileirarPorTelefone(
-      phone,
-      () =>
-        processarMensagem(
-          phone,
-          mensagemCompleta
-        )
-    ).catch((error) => {
-      console.error(
-        `ERRO FILA ${phone}:`,
-        error.response?.data || error.message
+      console.log(
+        `MENSAGEM AGRUPADA DE ${phone}:`,
+        mensagemCompleta
       );
-    });
-  }, DEBOUNCE_MS);
+
+      enfileirarPorTelefone(
+        phone,
+        () =>
+          processarMensagem(
+            phone,
+            mensagemCompleta
+          )
+      ).catch((error) => {
+        console.error(
+          `ERRO FILA ${phone}:`,
+          error.response?.data ||
+            error.message
+        );
+      });
+    }, DEBOUNCE_MS);
 }
 
 // =====================================================
 // Z-API
 // =====================================================
 
-async function enviarMensagemZAPI(phone, message) {
-  const response = await axios.post(
-    `${ZAPI_BASE_URL}/send-text`,
-    {
-      phone,
-      message,
-    },
-    {
-      headers: {
-        "Client-Token": CLIENT_TOKEN,
-        "Content-Type": "application/json",
+async function enviarMensagemZAPI(
+  phone,
+  message
+) {
+  const response =
+    await axios.post(
+      `${ZAPI_BASE_URL}/send-text`,
+      {
+        phone,
+        message,
       },
-      timeout: 20000,
-    }
-  );
+      {
+        headers: {
+          "Client-Token":
+            CLIENT_TOKEN,
+          "Content-Type":
+            "application/json",
+        },
+        timeout: 20000,
+      }
+    );
 
   return response.data;
+}
+
+async function enviarResposta(
+  phone,
+  message,
+  {
+    agendarReminder = true,
+  } = {}
+) {
+  await enviarMensagemZAPI(
+    phone,
+    message
+  );
+
+  registrarAtividade(phone);
+
+  if (agendarReminder) {
+    agendarLembrete(phone);
+  }
 }
 
 // =====================================================
@@ -952,22 +1448,39 @@ async function processarMensagem(
     `PROCESSANDO ${phone}: ${userMessage}`
   );
 
-  if (!historicoPorTelefone[phone]) {
+  // Se ficou 4 horas parada:
+  // adeus Frankenstein antigo.
+  if (sessaoExpirada(phone)) {
+    limparSessao(phone);
+  }
+
+  const eraSessaoNova =
+    !historicoPorTelefone[phone];
+
+  if (
+    !historicoPorTelefone[phone]
+  ) {
     historicoPorTelefone[phone] = [];
+    estadoPorTelefone[phone] =
+      criarEstadoNovo();
   }
 
   const historico =
     historicoPorTelefone[phone];
 
-  const estado = obterEstado(phone);
+  const estado =
+    obterEstado(phone);
+
+  limparTimerLembrete(phone);
+  registrarAtividade(phone);
 
   // ===================================================
-  // SAUDAÇÃO FIXA
+  // PRIMEIRA MENSAGEM
   // ===================================================
 
   if (
-    ehSaudacao(userMessage) &&
-    historico.length === 0
+    eraSessaoNova &&
+    ehSaudacaoPura(userMessage)
   ) {
     historico.push({
       role: "user",
@@ -979,10 +1492,7 @@ async function processarMensagem(
       content: welcomeMessage,
     });
 
-    historicoPorTelefone[phone] =
-      historico.slice(-MAX_MESSAGES);
-
-    await enviarMensagemZAPI(
+    await enviarResposta(
       phone,
       welcomeMessage
     );
@@ -990,15 +1500,31 @@ async function processarMensagem(
     return;
   }
 
-  let mensagemParaIA = userMessage;
+  // Qualquer outra primeira mensagem
+  // segue direto para a IA.
+  // "quero pizza", "boa boa", "tem coca?" etc.
+
+  let mensagemParaIA =
+    userMessage;
 
   // ===================================================
-  // CORREÇÃO DE CONTEXTO:
-  // CATUPIRY NÃO É COCA-COLA 😂
+  // CONFIRMAÇÃO FINAL
+  // ===================================================
+
+  const confirmandoFinal =
+    estaAguardandoConfirmacaoFinal(
+      historico
+    ) &&
+    ehConfirmacao(userMessage);
+
+  // ===================================================
+  // CONTEXTO
   // ===================================================
 
   const contextoAtual =
-    detectarContextoAtual(historico);
+    detectarContextoAtual(
+      historico
+    );
 
   if (
     contextoAtual === "BEBIDA" &&
@@ -1006,112 +1532,146 @@ async function processarMensagem(
     !possuiBebida(userMessage)
   ) {
     mensagemParaIA =
-      `ATENÇÃO: o cliente mencionou uma opção de BORDA, ` +
-      `não uma bebida.\n\n` +
+      `ATENÇÃO: o cliente mencionou uma opção de BORDA, não uma bebida.\n\n` +
       `Mensagem original:\n${userMessage}\n\n` +
-      `Interprete como escolha/correção da borda. ` +
-      `Confirme corretamente a borda e depois pergunte novamente a bebida. ` +
-      `NUNCA chame Catupiry, Cheddar ou Chocolate de bebida.`;
+      `Interprete como escolha/correção de borda e depois volte à bebida. ` +
+      `Nunca chame Catupiry, Cheddar ou Chocolate de bebida.`;
   }
 
   // ===================================================
-  // PAGAMENTO EM DINHEIRO
+  // PAGAMENTO MISTO
   // ===================================================
 
+  const totalParaPagamento =
+    estado.totalAtual ??
+    extrairUltimoTotal(
+      historico
+    );
+
+  const pagamentoMisto =
+    extrairPagamentoMisto(
+      userMessage,
+      totalParaPagamento
+    );
+
   if (
-    estaPerguntandoPagamento(historico) &&
-    mensagemEscolheDinheiro(userMessage)
+    pagamentoMisto?.erro
+  ) {
+    await enviarResposta(
+      phone,
+      `${pagamentoMisto.erro}\n\nO total do pedido é ${formatarReal(totalParaPagamento)}. Pode me passar novamente como deseja dividir o pagamento?`
+    );
+
+    return;
+  }
+
+  if (
+    Array.isArray(
+      pagamentoMisto
+    )
+  ) {
+    const validacao =
+      validarPagamentoMisto(
+        pagamentoMisto,
+        totalParaPagamento
+      );
+
+    if (!validacao.valido) {
+      await enviarResposta(
+        phone,
+        `A soma das formas de pagamento deu ${formatarReal(validacao.soma)}, mas o total do pedido é ${formatarReal(totalParaPagamento)}. 😅\n\nPode me passar novamente a divisão?`
+      );
+
+      return;
+    }
+
+    estado.aguardandoTroco =
+      false;
+
+    mensagemParaIA =
+      `PAGAMENTO MISTO VALIDADO PELO SISTEMA.\n\n` +
+      `Total do pedido: ${formatarReal(totalParaPagamento)}\n` +
+      `${formatarPagamentoMisto(pagamentoMisto)}\n\n` +
+      `A soma confere exatamente com o total.\n` +
+      `Use esses valores no resumo final.\n` +
+      `Não recalcule.\n` +
+      `Não trate nenhuma das parcelas isoladamente como se precisasse pagar o pedido inteiro.\n` +
+      `Não pergunte troco automaticamente apenas porque existe uma parcela em dinheiro.`;
+  }
+
+  // ===================================================
+  // DINHEIRO NORMAL
+  // ===================================================
+
+  else if (
+    estaPerguntandoPagamento(
+      historico
+    ) &&
+    mensagemEscolheDinheiro(
+      userMessage
+    )
   ) {
     const total =
-      extrairUltimoTotal(historico);
+      totalParaPagamento;
 
-    estado.totalAtual = total;
+    estado.totalAtual =
+      total;
 
-    // Caso mande rápido:
-    // dinheiro
-    // não
-    if (possuiNegacaoTroco(userMessage)) {
-      estado.aguardandoTroco = false;
+    if (
+      possuiNegacaoTroco(
+        userMessage
+      )
+    ) {
+      estado.aguardandoTroco =
+        false;
 
       mensagemParaIA =
-        `O cliente escolheu pagamento em dinheiro ` +
-        `e NÃO precisa de troco. ` +
-        `Continue para a finalização sem perguntar pagamento novamente.`;
+        `O cliente escolheu dinheiro e NÃO precisa de troco. Continue para a finalização.`;
     } else {
-      const valorNaMesmaMensagem =
-        extrairValorMonetario(userMessage);
+      const valor =
+        extrairValorMonetario(
+          userMessage
+        );
 
-      // "dinheiro 100"
       if (
-        valorNaMesmaMensagem !== null &&
+        valor !== null &&
         total !== null
       ) {
-        if (valorNaMesmaMensagem < total) {
-          estado.aguardandoTroco = true;
+        if (
+          valor <
+          total - TOLERANCIA_VALOR
+        ) {
+          estado.aguardandoTroco =
+            true;
 
-          const resposta =
-            `O total do pedido é ${formatarReal(total)}. ` +
-            `O valor informado (${formatarReal(valorNaMesmaMensagem)}) ` +
-            `é menor que o total. 😅\n\n` +
-            `Você vai pagar com qual valor?`;
-
-          historico.push({
-            role: "user",
-            content: userMessage,
-          });
-
-          historico.push({
-            role: "assistant",
-            content: resposta,
-          });
-
-          historicoPorTelefone[phone] =
-            historico.slice(-MAX_MESSAGES);
-
-          await enviarMensagemZAPI(
+          await enviarResposta(
             phone,
-            resposta
+            `O total do pedido é ${formatarReal(total)}. O valor informado (${formatarReal(valor)}) é menor que o total. 😅\n\nVocê vai pagar com qual valor?`
           );
 
           return;
         }
 
         const troco =
-          valorNaMesmaMensagem - total;
+          valor - total;
 
-        estado.aguardandoTroco = false;
+        estado.aguardandoTroco =
+          false;
 
         mensagemParaIA =
-          `INFORMAÇÃO VALIDADA PELO SISTEMA:\n` +
-          `Forma de pagamento: DINHEIRO\n` +
+          `PAGAMENTO VALIDADO PELO SISTEMA:\n` +
+          `Forma: DINHEIRO\n` +
           `Total: ${formatarReal(total)}\n` +
-          `Cliente pagará com: ${formatarReal(valorNaMesmaMensagem)}\n` +
+          `Cliente pagará com: ${formatarReal(valor)}\n` +
           `Troco correto: ${formatarReal(troco)}\n\n` +
-          `Use EXATAMENTE esses valores no resumo final. ` +
-          `Não recalcule e não use nenhum valor antigo.`;
+          `Use exatamente esses valores.`;
       } else {
-        estado.aguardandoTroco = true;
+        estado.aguardandoTroco =
+          true;
 
-        const resposta =
-          `Certo! Pagamento em dinheiro. 💵\n\n` +
-          `Precisa de troco? Se sim, para quanto?`;
-
-        historico.push({
-          role: "user",
-          content: userMessage,
-        });
-
-        historico.push({
-          role: "assistant",
-          content: resposta,
-        });
-
-        historicoPorTelefone[phone] =
-          historico.slice(-MAX_MESSAGES);
-
-        await enviarMensagemZAPI(
+        await enviarResposta(
           phone,
-          resposta
+          "Certo! Pagamento em dinheiro. 💵\n\nPrecisa de troco? Se sim, para quanto?"
         );
 
         return;
@@ -1120,58 +1680,47 @@ async function processarMensagem(
   }
 
   // ===================================================
-  // ESTAMOS ESPERANDO A RESPOSTA DO TROCO
+  // AGUARDANDO TROCO
   // ===================================================
 
-  else if (estado.aguardandoTroco) {
-    if (possuiNegacaoTroco(userMessage)) {
-      estado.aguardandoTroco = false;
+  else if (
+    estado.aguardandoTroco
+  ) {
+    if (
+      possuiNegacaoTroco(
+        userMessage
+      )
+    ) {
+      estado.aguardandoTroco =
+        false;
 
       mensagemParaIA =
-        `INFORMAÇÃO VALIDADA PELO SISTEMA:\n` +
-        `Forma de pagamento: DINHEIRO\n` +
-        `O cliente NÃO precisa de troco.\n\n` +
-        `Continue para a finalização. ` +
-        `Não pergunte novamente sobre pagamento ou troco.`;
+        `PAGAMENTO VALIDADO PELO SISTEMA:\n` +
+        `Forma: DINHEIRO\n` +
+        `Sem necessidade de troco.\n` +
+        `Continue a finalização e não pergunte pagamento novamente.`;
     } else {
-      const valorPagamento =
-        extrairValorMonetario(userMessage);
+      const valor =
+        extrairValorMonetario(
+          userMessage
+        );
 
-      if (valorPagamento !== null) {
+      if (valor !== null) {
         const total =
           estado.totalAtual ??
-          extrairUltimoTotal(historico);
+          extrairUltimoTotal(
+            historico
+          );
 
         if (
           total !== null &&
-          valorPagamento < total
+          valor <
+            total -
+              TOLERANCIA_VALOR
         ) {
-          estado.totalAtual = total;
-
-          const resposta =
-            `O total do pedido é ${formatarReal(total)}. ` +
-            `O valor informado (${formatarReal(valorPagamento)}) ` +
-            `é menor que o total. 😅\n\n` +
-            `Você vai pagar com qual valor? ` +
-            `Informe um valor igual ou maior que ${formatarReal(total)}, ` +
-            `ou escolha PIX/cartão.`;
-
-          historico.push({
-            role: "user",
-            content: userMessage,
-          });
-
-          historico.push({
-            role: "assistant",
-            content: resposta,
-          });
-
-          historicoPorTelefone[phone] =
-            historico.slice(-MAX_MESSAGES);
-
-          await enviarMensagemZAPI(
+          await enviarResposta(
             phone,
-            resposta
+            `O total do pedido é ${formatarReal(total)}. O valor informado (${formatarReal(valor)}) é menor que o total. 😅\n\nVocê vai pagar com qual valor?`
           );
 
           return;
@@ -1179,37 +1728,39 @@ async function processarMensagem(
 
         if (total !== null) {
           const troco =
-            valorPagamento - total;
+            valor - total;
 
-          estado.aguardandoTroco = false;
+          estado.aguardandoTroco =
+            false;
 
           mensagemParaIA =
-            `INFORMAÇÃO VALIDADA PELO SISTEMA:\n` +
-            `Forma de pagamento: DINHEIRO\n` +
+            `PAGAMENTO VALIDADO PELO SISTEMA:\n` +
+            `Forma: DINHEIRO\n` +
             `Total: ${formatarReal(total)}\n` +
-            `Cliente pagará com: ${formatarReal(valorPagamento)}\n` +
+            `Cliente pagará com: ${formatarReal(valor)}\n` +
             `Troco correto: ${formatarReal(troco)}\n\n` +
-            `Use EXATAMENTE esses valores no resumo final. ` +
-            `Não use valores anteriores e não recalcule o troco.`;
+            `Use exatamente esses valores.`;
         }
       }
     }
   }
 
   // ===================================================
-  // CONTEXTO EXPLÍCITO PARA A IA
+  // CONTEXTO EXPLÍCITO
   // ===================================================
 
   const contexto =
-    detectarContextoAtual(historico);
+    detectarContextoAtual(
+      historico
+    );
 
   if (
     contexto &&
-    mensagemParaIA === userMessage
+    mensagemParaIA ===
+      userMessage
   ) {
     mensagemParaIA =
-      `[CONTEXTO DA CONVERSA: a última etapa era ${contexto}.]\n` +
-      `${userMessage}`;
+      `[CONTEXTO ATUAL: ${contexto}]\n${userMessage}`;
   }
 
   // ===================================================
@@ -1224,7 +1775,8 @@ async function processarMensagem(
     ...historico,
     {
       role: "user",
-      content: mensagemParaIA,
+      content:
+        mensagemParaIA,
     },
   ];
 
@@ -1236,14 +1788,22 @@ async function processarMensagem(
       max_tokens: 650,
     });
 
-  const resposta =
-    completion.choices?.[0]?.message?.content?.trim();
+  let resposta =
+    completion.choices?.[0]
+      ?.message?.content?.trim();
 
   if (!resposta) {
     throw new Error(
       "OpenAI retornou resposta vazia."
     );
   }
+
+  // Backend manda na taxa e no total.
+  resposta =
+    corrigirTotaisNoTexto(
+      resposta,
+      phone
+    );
 
   historico.push({
     role: "user",
@@ -1256,147 +1816,216 @@ async function processarMensagem(
   });
 
   historicoPorTelefone[phone] =
-    historico.slice(-MAX_MESSAGES);
+    historico.slice(
+      -MAX_MESSAGES
+    );
 
-  await enviarMensagemZAPI(
+  await enviarResposta(
     phone,
-    resposta
+    resposta,
+    {
+      // Se acabou de confirmar,
+      // não tem por que lembrar o cliente
+      // depois.
+      agendarReminder:
+        !confirmandoFinal,
+    }
   );
+
+  // ===================================================
+  // ENCERRA SESSÃO APÓS CONFIRMAÇÃO FINAL
+  // ===================================================
+
+  if (confirmandoFinal) {
+    console.log(
+      `PEDIDO FINALIZADO: ${phone}`
+    );
+
+    // Dá tempo do envio terminar e
+    // depois mata a sessão.
+    setTimeout(() => {
+      limparSessao(phone);
+    }, 1000);
+  }
 }
 
 // =====================================================
 // WEBHOOK
 // =====================================================
 
-app.post("/webhook", (req, res) => {
-  const body = req.body;
+app.post(
+  "/webhook",
+  (req, res) => {
+    const body = req.body;
 
-  console.log(
-    "BODY RECEBIDO:",
-    JSON.stringify(body, null, 2)
-  );
+    console.log(
+      "BODY RECEBIDO:",
+      JSON.stringify(
+        body,
+        null,
+        2
+      )
+    );
 
-  // A Z-API não fica esperando a OpenAI.
-  res.status(200).json({
-    status: "received",
-  });
+    res.status(200).json({
+      status: "received",
+    });
 
-  if (body?.fromMe) {
-    return;
-  }
-
-  // Se houver messageId, evita processamento duplicado.
-  if (body?.messageId) {
-    if (
-      messageIdsProcessados.has(body.messageId)
-    ) {
-      console.log(
-        `IGNORADO: messageId duplicado ${body.messageId}`
-      );
+    if (body?.fromMe) {
       return;
     }
 
-    messageIdsProcessados.set(
-      body.messageId,
-      Date.now()
-    );
+    if (body?.messageId) {
+      if (
+        messageIdsProcessados.has(
+          body.messageId
+        )
+      ) {
+        console.log(
+          `IGNORADO: messageId duplicado ${body.messageId}`
+        );
 
-    setTimeout(() => {
-      messageIdsProcessados.delete(
-        body.messageId
-      );
-    }, 120000);
-  }
+        return;
+      }
 
-  const phone = body?.phone;
-
-  const userMessage =
-    body?.text?.message?.trim();
-
-  if (!phone || !userMessage) {
-    console.log(
-      "IGNORADO: payload sem telefone ou texto."
-    );
-    return;
-  }
-
-  console.log(
-    `Mensagem recebida de ${phone}: ${userMessage}`
-  );
-
-  // ===================================================
-  // RESET
-  // ===================================================
-
-  if (
-    normalizarTexto(userMessage) ===
-    "reiniciar"
-  ) {
-    if (timerPorTelefone[phone]) {
-      clearTimeout(
-        timerPorTelefone[phone]
+      messageIdsProcessados.set(
+        body.messageId,
+        Date.now()
       );
 
-      delete timerPorTelefone[phone];
+      setTimeout(() => {
+        messageIdsProcessados.delete(
+          body.messageId
+        );
+      }, 120000);
     }
 
-    delete bufferPorTelefone[phone];
+    const phone =
+      body?.phone;
 
-    enfileirarPorTelefone(
-      phone,
-      async () => {
-        historicoPorTelefone[phone] = [];
+    const userMessage =
+      body?.text?.message?.trim();
 
-        estadoPorTelefone[phone] = {
-          aguardandoTroco: false,
-          totalAtual: null,
-        };
-
-        await enviarMensagemZAPI(
-          phone,
-          "🔄 Conversa reiniciada. Mande um oi para começar novamente."
-        );
-      }
-    ).catch((error) => {
-      console.error(
-        "ERRO AO REINICIAR:",
-        error.response?.data || error.message
+    if (
+      !phone ||
+      !userMessage
+    ) {
+      console.log(
+        "IGNORADO: sem telefone ou texto."
       );
-    });
 
-    return;
+      return;
+    }
+
+    console.log(
+      `Mensagem recebida de ${phone}: ${userMessage}`
+    );
+
+    // Cliente respondeu:
+    // cancela lembrete pendente.
+    limparTimerLembrete(
+      phone
+    );
+
+    // Se passou 4 horas:
+    // mensagem começa sessão nova.
+    if (
+      sessaoExpirada(phone)
+    ) {
+      limparSessao(phone);
+    }
+
+    // =================================================
+    // RESET
+    // =================================================
+
+    if (
+      normalizarTexto(
+        userMessage
+      ) === "reiniciar"
+    ) {
+      limparSessao(phone);
+
+      enfileirarPorTelefone(
+        phone,
+        async () => {
+          estadoPorTelefone[phone] =
+            criarEstadoNovo();
+
+          historicoPorTelefone[phone] =
+            [];
+
+          await enviarMensagemZAPI(
+            phone,
+            "🔄 Conversa reiniciada. Pode mandar sua mensagem para começar novamente."
+          );
+        }
+      ).catch((error) => {
+        console.error(
+          "ERRO AO REINICIAR:",
+          error.response?.data ||
+            error.message
+        );
+      });
+
+      return;
+    }
+
+    registrarAtividade(phone);
+
+    // =================================================
+    // DEBOUNCE
+    // =================================================
+
+    acumularMensagem(
+      phone,
+      userMessage
+    );
   }
-
-  // ===================================================
-  // AGRUPA AS MENSAGENS
-  // ===================================================
-
-  acumularMensagem(
-    phone,
-    userMessage
-  );
-});
+);
 
 // =====================================================
-// ROTAS DE TESTE
+// ROTAS
 // =====================================================
 
 app.get("/", (req, res) => {
-  res.send("MJ Pizzaria rodando");
+  res.send(
+    "MJ Pizzaria rodando"
+  );
 });
 
-app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    zapiInstanceConfigured:
-      Boolean(ZAPI_INSTANCE),
-    clientTokenConfigured:
-      Boolean(CLIENT_TOKEN),
-    openaiConfigured:
-      Boolean(OPENAI_API_KEY),
-    debounceMs: DEBOUNCE_MS,
-  });
-});
+app.get(
+  "/health",
+  (req, res) => {
+    res.json({
+      status: "ok",
+
+      zapiInstanceConfigured:
+        Boolean(
+          ZAPI_INSTANCE
+        ),
+
+      clientTokenConfigured:
+        Boolean(
+          CLIENT_TOKEN
+        ),
+
+      openaiConfigured:
+        Boolean(
+          OPENAI_API_KEY
+        ),
+
+      debounceMs:
+        DEBOUNCE_MS,
+
+      reminderMs:
+        LEMBRETE_MS,
+
+      sessionExpirationMs:
+        EXPIRACAO_SESSAO_MS,
+    });
+  }
+);
 
 // =====================================================
 // SERVIDOR
@@ -1411,6 +2040,14 @@ app.listen(PORT, () => {
   );
 
   console.log(
-    `Debounce configurado: ${DEBOUNCE_MS}ms`
+    `Debounce: ${DEBOUNCE_MS}ms`
+  );
+
+  console.log(
+    `Lembrete: ${LEMBRETE_MS}ms`
+  );
+
+  console.log(
+    `Expiração da sessão: ${EXPIRACAO_SESSAO_MS}ms`
   );
 });
