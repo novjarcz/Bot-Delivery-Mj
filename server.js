@@ -1833,7 +1833,7 @@ async function processarMensagem(
   );
 
   // ===================================================
-  // ENCERRA SESSÃO APÓS CONFIRMAÇÃO FINAL
+  // PEDIDO FINALIZADO
   // ===================================================
 
   if (confirmandoFinal) {
@@ -1841,11 +1841,10 @@ async function processarMensagem(
       `PEDIDO FINALIZADO: ${phone}`
     );
 
-    // Dá tempo do envio terminar e
-    // depois mata a sessão.
-    setTimeout(() => {
-      limparSessao(phone);
-    }, 1000);
+    // Não limpa a sessão imediatamente.
+    // O lembrete já não será agendado após a confirmação.
+    // A sessão será esquecida automaticamente após
+    // 4 horas sem atividade pela regra de expiração.
   }
 }
 
