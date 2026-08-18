@@ -47,7 +47,7 @@ const openai = new OpenAI({
 // CONFIGURAÇÕES
 // =====================================================
 
-const DEBOUNCE_MS = 6000;
+const DEBOUNCE_MS = 4000;
 
 // 1 minuto.
 const LEMBRETE_MS = 60 * 1000;
