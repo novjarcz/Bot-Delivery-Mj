@@ -121,7 +121,89 @@ function buscarProdutosCardapio(termo) {
 
   return resultados;
 }
+// =====================================================
+// PRODUTOS RELEVANTES NA MENSAGEM
+// =====================================================
 
+function encontrarProdutosNaMensagem(texto) {
+  const mensagem = normalizarBusca(texto);
+
+  if (!mensagem) {
+    return [];
+  }
+
+  const resultados = [];
+  const idsEncontrados = new Set();
+
+  for (const categoria of cardapio.categorias || []) {
+    for (const produto of categoria.produtos || []) {
+      const nome = normalizarBusca(
+        produto.nome || ""
+      );
+
+      const palavrasNome = nome
+        .split(/\s+/)
+        .filter((palavra) => palavra.length >= 4);
+
+      let pontuacao = 0;
+
+      // Nome completo aparece na mensagem.
+      if (nome && mensagem.includes(nome)) {
+        pontuacao += 10;
+      }
+
+      // Procura palavras relevantes do nome.
+      for (const palavra of palavrasNome) {
+        if (mensagem.includes(palavra)) {
+          pontuacao += 2;
+        }
+      }
+
+      // Procura opções do produto.
+      for (const opcao of produto.opcoes || []) {
+        const opcaoNormalizada =
+          normalizarBusca(opcao);
+
+        if (
+          opcaoNormalizada &&
+          mensagem.includes(opcaoNormalizada)
+        ) {
+          pontuacao += 4;
+        }
+      }
+
+      // Procura variações, como 250g, 500g, 2L etc.
+      for (const variacao of produto.variacoes || []) {
+        const nomeVariacao =
+          normalizarBusca(variacao.nome || "");
+
+        if (
+          nomeVariacao &&
+          mensagem.includes(nomeVariacao)
+        ) {
+          pontuacao += 3;
+        }
+      }
+
+      if (
+        pontuacao >= 2 &&
+        !idsEncontrados.has(produto.id)
+      ) {
+        idsEncontrados.add(produto.id);
+
+        resultados.push({
+          ...produto,
+          categoria: categoria.nome,
+          pontuacao
+        });
+      }
+    }
+  }
+
+  return resultados
+    .sort((a, b) => b.pontuacao - a.pontuacao)
+    .slice(0, 8);
+}
 
 // =====================================================
 // CONFIGURAÇÕES
