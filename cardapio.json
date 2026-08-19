@@ -19,7 +19,7 @@
         { "id": "esp_pao_alho", "nome": "Pão de Alho", "preco": 10.00, "disponivel": true, "imagem": null },
         { "id": "esp_queijo", "nome": "Queijo", "preco": 10.00, "disponivel": true, "imagem": null },
         { "id": "esp_meio_asa", "nome": "Meio da Asa", "preco": 11.00, "disponivel": true, "imagem": null },
-        { "id": "esp_coracao_frango", "nome": "Coração de Frango", "preco": 11.00, "disponivel": true, "imagem": null },
+        { "id": "esp_coracao_frango", "nome": "Coração de Frango", "preco": 11.00, "disponivel": true, "aliases": ["coracao", "coracaozinho", "coracao de frango"], "imagem": null },
         { "id": "esp_carne_porco", "nome": "Carne de Porco", "preco": 10.00, "disponivel": true, "imagem": null },
         { "id": "esp_costela_bovina", "nome": "Costela Bovina", "preco": 11.00, "disponivel": true, "imagem": null }
       ]
@@ -29,7 +29,7 @@
       "nome": "Espetinhos de Medalhão",
       "produtos": [
         { "id": "med_carne_boi", "nome": "Medalhão de Carne de Boi", "preco": 17.00, "disponivel": true, "imagem": null },
-        { "id": "med_frango", "nome": "Medalhão de Frango", "preco": 15.00, "disponivel": true, "imagem": null },
+        { "id": "med_frango", "nome": "Medalhão de Frango", "preco": 15.00, "disponivel": true, "aliases": ["medalhao frango", "medalhao de frango"], "imagem": null },
         { "id": "med_carne_bacon_queijo", "nome": "Medalhão de Carne, Bacon e Queijo", "preco": 20.00, "disponivel": true, "imagem": null }
       ]
     },
@@ -37,12 +37,13 @@
       "id": "jantinhas",
       "nome": "Jantinhas",
       "produtos": [
-        {
-          "id": "jantinha_1",
-          "nome": "Jantinha 1",
-          "preco": 24.00,
-          "disponivel": true,
-          "descricao": "Arroz, mandioca ou batata frita, farofa caseira, salada e um espetinho normal.",
+{
+  "id": "jantinha_1",
+  "nome": "Jantinha 1",
+  "preco": 24.00,
+  "disponivel": true,
+  "aliases": ["jantinha 1", "janta 1"],
+  "descricao": "Arroz, mandioca ou batata frita, farofa caseira, salada e um espetinho normal.",
           "escolhas": [
             {
               "id": "acompanhamento",
@@ -167,15 +168,16 @@
       "observacao": "As porções são pesadas cruas.",
       "produtos": [
         {
-          "id": "porcao_batata",
-          "nome": "Batata",
-          "disponivel": true,
-          "variacoes": [
-            { "nome": "250g", "preco": 18.00 },
-            { "nome": "500g", "preco": 30.00 }
-          ],
-          "imagem": null
-        },
+  "id": "porcao_batata",
+  "nome": "Batata",
+  "disponivel": true,
+  "aliases": ["batata", "batata frita", "fritas"],
+  "variacoes": [
+    { "nome": "250g", "preco": 18.00 },
+    { "nome": "500g", "preco": 30.00 }
+  ],
+  "imagem": null
+},
         {
           "id": "porcao_batata_cheddar",
           "nome": "Batata com Cheddar",
@@ -324,8 +326,10 @@
           "nome": "Combo Gigante",
           "preco": 170.00,
           "disponivel": true,
+"aliases": ["combo gigante", "gigante"],
           "quantidade_espetinhos": 16,
           "composicao": [
+
             "4 Espetinhos de carne",
             "2 Espetinhos de frango",
             "2 Espetinhos de coração de frango",
@@ -382,47 +386,52 @@
         { "id": "brahma_lata", "nome": "Brahma Lata", "preco": 5.00, "disponivel": true, "imagem": null },
 
         {
-          "id": "refrigerante_lata",
-          "nome": "Refrigerante Lata",
-          "preco": 6.00,
-          "disponivel": true,
-          "opcoes": ["Coca-Cola", "Guaraná", "Fanta", "Sprite"],
-          "imagem": null
-        },
-        {
-          "id": "refrigerante_600",
-          "nome": "Refrigerante 600ml",
-          "preco": 9.00,
-          "disponivel": true,
-          "opcoes": ["Coca-Cola", "Guaraná"],
-          "imagem": null
-        },
-        {
-          "id": "refrigerante_1l",
-          "nome": "Refrigerante 1L",
-          "preco": 10.00,
-          "disponivel": true,
-          "opcoes": ["Coca-Cola", "Guaraná"],
-          "imagem": null
-        },
-        {
-          "id": "refrigerante_2l_delivery",
-          "nome": "Refrigerante 2L",
-          "contexto": "delivery",
-          "preco": 15.00,
-          "disponivel": true,
-          "opcoes": ["Coca-Cola", "Guaraná"],
-          "imagem": null
-        },
-        {
-          "id": "refrigerante_2l_mesa",
-          "nome": "Refrigerante 2L",
-          "contexto": "mesa",
-          "preco": 16.00,
-          "disponivel": true,
-          "opcoes": ["Coca-Cola", "Guaraná"],
-          "imagem": null
-        },
+  "id": "refrigerante_lata",
+  "nome": "Refrigerante Lata",
+  "preco": 6.00,
+  "disponivel": true,
+  "opcoes": ["Coca-Cola", "Guaraná", "Fanta", "Sprite"],
+  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana", "fanta", "sprite"],
+  "imagem": null
+},
+{
+  "id": "refrigerante_600",
+  "nome": "Refrigerante 600ml",
+  "preco": 9.00,
+  "disponivel": true,
+  "opcoes": ["Coca-Cola", "Guaraná"],
+  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana"],
+  "imagem": null
+},
+{
+  "id": "refrigerante_1l",
+  "nome": "Refrigerante 1L",
+  "preco": 10.00,
+  "disponivel": true,
+  "opcoes": ["Coca-Cola", "Guaraná"],
+  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana"],
+  "imagem": null
+},
+{
+  "id": "refrigerante_2l_delivery",
+  "nome": "Refrigerante 2L",
+  "contexto": "delivery",
+  "preco": 15.00,
+  "disponivel": true,
+  "opcoes": ["Coca-Cola", "Guaraná"],
+  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana"],
+  "imagem": null
+},
+{
+  "id": "refrigerante_2l_mesa",
+  "nome": "Refrigerante 2L",
+  "contexto": "mesa",
+  "preco": 16.00,
+  "disponivel": true,
+  "opcoes": ["Coca-Cola", "Guaraná"],
+  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana"],
+  "imagem": null
+},
 
         { "id": "coca_ks_290", "nome": "Coca-Cola KS 290ml", "preco": 6.00, "disponivel": true, "imagem": null },
         { "id": "agua_tonica", "nome": "Água Tônica", "preco": 7.00, "disponivel": true, "imagem": null },
