@@ -76,6 +76,52 @@ const cardapio = carregarCardapio();
 console.log(
   `CARDÁPIO CARREGADO: ${cardapio.estabelecimento?.nome || "sem nome"}`
 );
+// =====================================================
+// BUSCA NO CARDÁPIO
+// =====================================================
+
+function normalizarBusca(texto = "") {
+  return String(texto)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function buscarProdutosCardapio(termo) {
+  const busca = normalizarBusca(termo);
+
+  if (!busca) {
+    return [];
+  }
+
+  const resultados = [];
+
+  for (const categoria of cardapio.categorias || []) {
+    for (const produto of categoria.produtos || []) {
+      const nomeProduto = normalizarBusca(
+        produto.nome
+      );
+
+      const descricaoProduto = normalizarBusca(
+        produto.descricao || ""
+      );
+
+      if (
+        nomeProduto.includes(busca) ||
+        descricaoProduto.includes(busca)
+      ) {
+        resultados.push({
+          ...produto,
+          categoria: categoria.nome
+        });
+      }
+    }
+  }
+
+  return resultados;
+}
+
 
 // =====================================================
 // CONFIGURAÇÕES
