@@ -3,6 +3,8 @@ require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const OpenAI = require("openai");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 app.use(express.json());
@@ -42,6 +44,38 @@ const ZAPI_BASE_URL =
 const openai = new OpenAI({
   apiKey: OPENAI_API_KEY,
 });
+// =====================================================
+// CARDÁPIO
+// =====================================================
+
+const caminhoCardapio = path.join(
+  __dirname,
+  "cardapio.json"
+);
+
+function carregarCardapio() {
+  try {
+    const conteudo = fs.readFileSync(
+      caminhoCardapio,
+      "utf8"
+    );
+
+    return JSON.parse(conteudo);
+  } catch (error) {
+    console.error(
+      "ERRO AO CARREGAR CARDÁPIO:",
+      error.message
+    );
+
+    process.exit(1);
+  }
+}
+
+const cardapio = carregarCardapio();
+
+console.log(
+  `CARDÁPIO CARREGADO: ${cardapio.estabelecimento?.nome || "sem nome"}`
+);
 
 // =====================================================
 // CONFIGURAÇÕES
