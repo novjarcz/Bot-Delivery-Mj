@@ -10,7 +10,7 @@ const app = express();
 app.use(express.json());
 
 // =====================================================
-// VARIÁVEIS DE AMBIENTE
+// VARIÃVEIS DE AMBIENTE
 // =====================================================
 
 const {
@@ -33,7 +33,7 @@ const missingEnvVars = Object.entries(requiredEnvVars)
 
 if (missingEnvVars.length > 0) {
   console.error(
-    `Variáveis ausentes: ${missingEnvVars.join(", ")}`
+    `VariÃ¡veis ausentes: ${missingEnvVars.join(", ")}`
   );
   process.exit(1);
 }
@@ -45,7 +45,7 @@ const openai = new OpenAI({
   apiKey: OPENAI_API_KEY,
 });
 // =====================================================
-// CARDÁPIO
+// CARDÃPIO
 // =====================================================
 
 const caminhoCardapio = path.join(
@@ -63,7 +63,7 @@ function carregarCardapio() {
     return JSON.parse(conteudo);
   } catch (error) {
     console.error(
-      "ERRO AO CARREGAR CARDÁPIO:",
+      "ERRO AO CARREGAR CARDÃPIO:",
       error.message
     );
 
@@ -74,10 +74,10 @@ function carregarCardapio() {
 const cardapio = carregarCardapio();
 
 console.log(
-  `CARDÁPIO CARREGADO: ${cardapio.estabelecimento?.nome || "sem nome"}`
+  `CARDÃPIO CARREGADO: ${cardapio.estabelecimento?.nome || "sem nome"}`
 );
 // =====================================================
-// BUSCA NO CARDÁPIO
+// BUSCA NO CARDÃPIO
 // =====================================================
 
 function normalizarBusca(texto = "") {
@@ -164,7 +164,7 @@ function encontrarProdutosNaMensagem(texto) {
         }
       }
 // Aliases:
-// coração, coraçãozinho, coca, refri etc.
+// coraÃ§Ã£o, coraÃ§Ã£ozinho, coca, refri etc.
 for (const alias of produto.aliases || []) {
   const aliasNormalizado =
     normalizarBusca(alias);
@@ -180,8 +180,8 @@ for (const alias of produto.aliases || []) {
     );
   }
 }
-      // Opções:
-      // Coca-Cola, Guaraná, com gás etc.
+      // OpÃ§Ãµes:
+      // Coca-Cola, GuaranÃ¡, com gÃ¡s etc.
       for (const opcao of produto.opcoes || []) {
         const opcaoNormalizada =
           normalizarBusca(opcao);
@@ -215,7 +215,7 @@ for (const alias of produto.aliases || []) {
         }
       }
 
-      // Variações:
+      // VariaÃ§Ãµes:
       // 250g, 500g etc.
       for (const variacao of produto.variacoes || []) {
         const nomeVariacao =
@@ -234,7 +234,7 @@ for (const alias of produto.aliases || []) {
         }
       }
 
-      // Tamanho embutido no próprio nome:
+      // Tamanho embutido no prÃ³prio nome:
       // Refrigerante 2L, Heineken 600ml etc.
       const medidasProduto =
         nome.match(
@@ -279,7 +279,7 @@ for (const alias of produto.aliases || []) {
   return resultados
     .sort((a, b) => {
       // Em conversa de delivery,
-      // se houver versões mesa/delivery,
+      // se houver versÃµes mesa/delivery,
       // favorece delivery.
       if (
         a.contexto === "delivery" &&
@@ -302,7 +302,7 @@ for (const alias of produto.aliases || []) {
 
 
 // =====================================================
-// CONFIGURAÇÕES
+// CONFIGURAÃ‡Ã•ES
 // =====================================================
 
 const DEBOUNCE_MS = 4000;
@@ -316,17 +316,17 @@ const EXPIRACAO_SESSAO_MS = 4 * 60 * 60 * 1000;
 const MAX_MESSAGES = 20;
 
 // REGRA ATUAL:
-// subtotal > R$60 = grátis.
+// subtotal > R$60 = grÃ¡tis.
 // subtotal <= R$60 = R$6,90.
 const TAXA_ENTREGA = 6.90;
 const LIMITE_ENTREGA_GRATIS = 60;
 
-// Tolerância para conferir pagamentos.
+// TolerÃ¢ncia para conferir pagamentos.
 // Evita problema idiota de ponto flutuante.
 const TOLERANCIA_VALOR = 0.02;
 
 // =====================================================
-// MEMÓRIA
+// MEMÃ“RIA
 // =====================================================
 
 const historicoPorTelefone = {};
@@ -338,438 +338,25 @@ const estadoPorTelefone = {};
 const messageIdsProcessados = new Map();
 
 // =====================================================
-// SAUDAÇÃO
+// SAUDAÃ‡ÃƒO
 // =====================================================
 
-const welcomeMessage = `🍕 Olá! Seja bem-vindo à *MJ Pizzaria*! 😄
+const welcomeMessage = `ðŸ”¥ OlÃ¡! Seja bem-vindo ao *Tiquinho Espetinhos*! ðŸ˜‹
 
-Hoje temos:
+Pode fazer seu pedido por aqui mesmo.
 
-🍕 Pizzas
-• Pequena — R$35
-• Média — R$45
-• Grande — R$59
+Temos espetinhos, jantinhas, porÃ§Ãµes, combos, bebidas e muito mais.
 
-🍔 Lanches artesanais
-🍟 Porções
-🥤 Bebidas e sucos naturais
-🍺 Cervejas
-🍨 Açaí
-
-Me fala o que deu vontade que eu monto seu pedido rapidinho. 😋`;
+Me fala o que deu vontade que eu te ajudo rapidinho!`;
 
 // =====================================================
 // PROMPT
 // =====================================================
 
-const systemPrompt = `
-Você é o atendente virtual oficial da MJ Pizzaria.
-
-========================================
-IDENTIDADE
-========================================
-
-- Você trabalha na MJ Pizzaria.
-- Seja simpático, natural, rápido e profissional.
-- Nunca invente produtos, preços, descontos ou informações.
-- Use APENAS o cardápio oficial.
-- Nunca responda apenas "Como posso ajudar?".
-- Não seja insistente.
-- Não faça perguntas repetidas.
-
-========================================
-INÍCIO DO ATENDIMENTO
-========================================
-
-Qualquer primeira mensagem inicia um atendimento.
-
-O cliente pode começar com:
-
-"oi"
-"bom dia"
-"boa boa"
-"quero pedir"
-"tem pizza?"
-"manda o cardápio"
-"quero uma grande"
-
-Nunca exija uma saudação específica.
-
-Se a primeira mensagem já contiver intenção de compra,
-responda diretamente à intenção e não obrigue o cliente
-a passar por uma saudação genérica antes.
-
-========================================
-MENSAGENS PICADAS
-========================================
-
-O sistema pode juntar várias mensagens seguidas.
-
-Exemplo:
-
-"oi
-eu
-quero
-uma pizza
-grande
-calabresa"
-
-Interprete como UMA fala:
-
-"Oi, eu quero uma pizza grande de calabresa."
-
-Use todas as informações fornecidas.
-Não pergunte novamente o que já foi informado.
-
-========================================
-REGRA DE OURO
-========================================
-
-Nunca transforme uma pergunta em escolha.
-
-Exemplo:
-
-Cliente:
-"calabresa
-tem borda?"
-
-Isso significa:
-- sabor escolhido: Calabresa;
-- cliente está perguntando se existem bordas.
-
-NÃO significa que ele escolheu Catupiry.
-
-Correto:
-
-"Tem sim 😋
-• Catupiry — R$8
-• Cheddar — R$8
-• Chocolate — R$10
-
-Qual você prefere?"
-
-Se houver ambiguidade:
-PERGUNTE.
-Nunca invente uma escolha.
-
-========================================
-CONTEXTO E CATEGORIAS
-========================================
-
-Nunca associe produtos a categorias erradas.
-
-BORDAS:
-- Catupiry
-- Cheddar
-- Chocolate
-
-PORÇÕES:
-- Batata frita
-- Batata com cheddar e bacon
-
-MOLHOS:
-- Alho
-- Verde
-- Especial
-- Picante
-
-BEBIDAS:
-- Água
-- Coca-Cola 2L
-- Guaraná 2L
-- Coca-Cola lata
-- Guaraná lata
-- Suco natural de laranja
-- Suco natural de morango
-
-CERVEJAS:
-- Heineken
-- Corona
-- Budweiser
-
-Nunca diga:
-"bebida de Catupiry"
-"molho Coca-Cola"
-"borda de Guaraná"
-
-========================================
-FLUXO DE PIZZA
-========================================
-
-Se faltar tamanho, mostre:
-
-🍕 Pequena, 4 fatias — R$35
-🍕 Média, 6 fatias — R$45
-🍕 Grande, 8 fatias — R$59
-
-Depois:
-
-1. tamanho;
-2. sabor;
-3. borda;
-4. porção/molho;
-5. bebida;
-6. açaí;
-7. resumo.
-
-Se o cliente já informar uma etapa:
-NÃO pergunte novamente.
-
-========================================
-UPSSELL
-========================================
-
-Depois da borda, ofereça uma única vez:
-
-🍟 Batata frita — R$12
-🥓 Batata com cheddar e bacon — R$18
-
-Molhos:
-• Alho — R$3
-• Verde — R$3
-• Especial — R$4
-• Picante — R$4
-
-Se o cliente recusar:
-avance para bebidas.
-
-Depois ofereça bebida.
-
-Depois ofereça açaí uma única vez.
-
-Nunca ofereça novamente algo já recusado.
-
-========================================
-CARDÁPIO
-========================================
-
-PIZZAS:
-- Pequena, 4 fatias — R$35
-- Média, 6 fatias — R$45
-- Grande, 8 fatias — R$59
-
-Sabores:
-- Calabresa
-- Frango com catupiry
-- Portuguesa
-- Bacon
-- Quatro queijos
-- Marguerita
-
-Bordas:
-- Catupiry — R$8
-- Cheddar — R$8
-- Chocolate — R$10
-
-LANCHES:
-- X-Burger — R$18
-- X-Salada — R$20
-- X-Egg — R$22
-- X-Bacon — R$25
-- X-Tudo — R$32
-- Smash Duplo — R$28
-
-Adicionais:
-- Ovo — R$2
-- Presunto — R$3
-- Catupiry — R$5
-- Cheddar — R$5
-- Calabresa — R$6
-- Hambúrguer extra — R$8
-- Bacon extra — R$6
-
-PORÇÕES:
-- Batata frita — R$12
-- Batata com cheddar e bacon — R$18
-
-MOLHOS:
-- Alho — R$3
-- Verde — R$3
-- Especial — R$4
-- Picante — R$4
-
-BEBIDAS:
-- Água — R$3
-- Coca-Cola 2L — R$14
-- Guaraná 2L — R$12
-- Coca-Cola lata — R$6
-- Guaraná lata — R$5
-- Suco natural de laranja — R$8
-- Suco natural de morango — R$9
-
-CERVEJAS:
-- Heineken — R$9
-- Corona — R$10
-- Budweiser — R$8
-
-AÇAÍ:
-- 300 ml — R$14
-- 500 ml — R$18
-- 700 ml — R$24
-
-Adicionais:
-- Leite condensado — R$2
-- Nutella — R$5
-- Paçoca — R$2
-- Granola — R$2
-- Morango — R$4
-- Banana — R$3
-
-========================================
-ENTREGA
-========================================
-
-O backend controla taxa e total.
-
-Regra atual:
-
-Subtotal MAIOR que R$60:
-entrega grátis.
-
-Subtotal igual ou menor que R$60:
-taxa R$6,90.
-
-Nunca altere uma taxa ou total informado pelo SISTEMA.
-
-========================================
-DADOS DA ENTREGA
-========================================
-
-Obrigatórios:
-
-- nome;
-- rua;
-- número;
-- bairro.
-
-Opcionais:
-
-- referência;
-- localização.
-
-Se o cliente mandar:
-
-"Michel
-Alecrim 516
-Figueira
-casa amarela"
-
-interprete:
-
-Nome: Michel
-Rua: Alecrim
-Número: 516
-Bairro: Figueira
-Referência: casa amarela
-
-Nunca pergunte novamente dados já informados.
-
-========================================
-PAGAMENTO
-========================================
-
-Aceite:
-
-- PIX;
-- cartão;
-- dinheiro;
-- pagamento misto.
-
-Pagamento misto pode ser dito naturalmente:
-
-"100 no dinheiro e 33,90 no pix"
-"100 no dinheiro e o resto no pix"
-"metade dinheiro metade cartão"
-"50 no pix e o restante no dinheiro"
-
-Quando o backend enviar uma divisão VALIDADA,
-use exatamente aquela divisão.
-
-Não tente recalcular.
-
-Se houver cartão sem informar crédito/débito,
-pergunte somente isso.
-
-========================================
-TROCO
-========================================
-
-Se pagamento for somente dinheiro:
-pergunte se precisa de troco.
-
-Se disser:
-
-"não"
-"nao"
-"sem troco"
-"não precisa"
-"não preciso"
-
-significa:
-SEM TROCO.
-
-Nunca transforme "não" em número.
-
-Em pagamento misto:
-não pergunte troco automaticamente apenas porque
-uma parte é em dinheiro.
-
-Só pergunte troco se houver indicação de que o cliente
-vai entregar uma quantia em espécie maior que a parte
-que precisa pagar em dinheiro.
-
-========================================
-FINALIZAÇÃO
-========================================
-
-Mostre:
-
-📋 RESUMO DO PEDIDO
-
-- itens;
-- adicionais;
-- porções;
-- molhos;
-- bebidas;
-- açaí;
-- subtotal;
-- entrega;
-- total.
-
-Depois:
-
-DADOS DE ENTREGA
-
-PAGAMENTO
-
-Depois:
-
-⚠️ Este atendimento é somente uma demonstração da automação da MJ Pizzaria. Nenhum pedido real será produzido ou cobrado.
-
-Pergunte:
-
-"Posso confirmar esta demonstração?"
-
-Nunca finalize antes da confirmação.
-`;
-
-// =====================================================
-// ESTADO
-// =====================================================
-
-function criarEstadoNovo() {
-  return {
-    aguardandoTroco: false,
-    totalAtual: null,
-
-    ultimaAtividade: Date.now(),
-
-    lembreteEnviado: false,
-    timerLembrete: null,
-
-    sessaoAtiva: true,
-  };
-}
+const systemPrompt = fs.readFileSync(
+  "./prompt-tiquinho.txt",
+  "utf8"
+);
 
 function obterEstado(phone) {
   if (!estadoPorTelefone[phone]) {
@@ -802,7 +389,7 @@ function limparSessao(phone) {
   delete estadoPorTelefone[phone];
 
   console.log(
-    `SESSÃO LIMPA: ${phone}`
+    `SESSÃƒO LIMPA: ${phone}`
   );
 }
 
@@ -851,7 +438,7 @@ function agendarLembrete(phone) {
 
         await enviarMensagemZAPI(
           phone,
-          "Opa 😊 ficou com alguma dúvida? Se quiser, posso continuar seu pedido por aqui."
+          "Opa ðŸ˜Š ficou com alguma dÃºvida? Se quiser, posso continuar seu pedido por aqui."
         );
 
         console.log(
@@ -869,7 +456,7 @@ function agendarLembrete(phone) {
   );
 }
 
-// Limpa sessões antigas da memória periodicamente.
+// Limpa sessÃµes antigas da memÃ³ria periodicamente.
 setInterval(() => {
   for (
     const phone of
@@ -976,7 +563,7 @@ function possuiBebida(texto) {
 }
 
 // =====================================================
-// HISTÓRICO
+// HISTÃ“RICO
 // =====================================================
 
 function ultimaRespostaAssistente(
@@ -1265,11 +852,11 @@ function corrigirTotaisNoTexto(
   corrigido = corrigido.replace(
     /entrega\s*:.*$/im,
     entrega === 0
-      ? "Entrega: Grátis"
+      ? "Entrega: GrÃ¡tis"
       : `Entrega: ${formatarReal(entrega)}`
   );
 
-  // Se não havia linha de entrega,
+  // Se nÃ£o havia linha de entrega,
   // tenta inserir antes do Total.
   if (
     !/entrega\s*:/i.test(corrigido) &&
@@ -1279,7 +866,7 @@ function corrigirTotaisNoTexto(
       /total\s*:/i,
       `${
         entrega === 0
-          ? "Entrega: Grátis"
+          ? "Entrega: GrÃ¡tis"
           : `Entrega: ${formatarReal(entrega)}`
       }\nTotal:`
     );
@@ -1321,14 +908,14 @@ function detectarMetodoPagamento(
     s.includes("debito")
   ) {
     if (s.includes("credito")) {
-      return "CARTÃO CRÉDITO";
+      return "CARTÃƒO CRÃ‰DITO";
     }
 
     if (s.includes("debito")) {
-      return "CARTÃO DÉBITO";
+      return "CARTÃƒO DÃ‰BITO";
     }
 
-    return "CARTÃO";
+    return "CARTÃƒO";
   }
 
   return null;
@@ -1361,7 +948,7 @@ function extrairPagamentoMisto(
   }
 
   // Exemplo:
-  // metade dinheiro metade cartão
+  // metade dinheiro metade cartÃ£o
   if (
     msg.includes("metade") &&
     metodosPresentes === 2
@@ -1392,10 +979,10 @@ function extrairPagamentoMisto(
       partes.push({
         metodo:
           msg.includes("credito")
-            ? "CARTÃO CRÉDITO"
+            ? "CARTÃƒO CRÃ‰DITO"
             : msg.includes("debito")
-            ? "CARTÃO DÉBITO"
-            : "CARTÃO",
+            ? "CARTÃƒO DÃ‰BITO"
+            : "CARTÃƒO",
         valor: metade,
       });
     }
@@ -1513,7 +1100,7 @@ function validarPagamentoMisto(
     return {
       valido: false,
       motivo:
-        "Não consegui entender a divisão do pagamento.",
+        "NÃ£o consegui entender a divisÃ£o do pagamento.",
     };
   }
 
@@ -1766,7 +1353,7 @@ async function processarMensagem(
     userMessage;
 
   // ===================================================
-  // CONFIRMAÇÃO FINAL
+  // CONFIRMAÃ‡ÃƒO FINAL
   // ===================================================
 
   const confirmandoFinal =
@@ -1790,9 +1377,9 @@ async function processarMensagem(
     !possuiBebida(userMessage)
   ) {
     mensagemParaIA =
-      `ATENÇÃO: o cliente mencionou uma opção de BORDA, não uma bebida.\n\n` +
+      `ATENÃ‡ÃƒO: o cliente mencionou uma opÃ§Ã£o de BORDA, nÃ£o uma bebida.\n\n` +
       `Mensagem original:\n${userMessage}\n\n` +
-      `Interprete como escolha/correção de borda e depois volte à bebida. ` +
+      `Interprete como escolha/correÃ§Ã£o de borda e depois volte Ã  bebida. ` +
       `Nunca chame Catupiry, Cheddar ou Chocolate de bebida.`;
   }
 
@@ -1817,7 +1404,7 @@ async function processarMensagem(
   ) {
     await enviarResposta(
       phone,
-      `${pagamentoMisto.erro}\n\nO total do pedido é ${formatarReal(totalParaPagamento)}. Pode me passar novamente como deseja dividir o pagamento?`
+      `${pagamentoMisto.erro}\n\nO total do pedido Ã© ${formatarReal(totalParaPagamento)}. Pode me passar novamente como deseja dividir o pagamento?`
     );
 
     return;
@@ -1837,7 +1424,7 @@ async function processarMensagem(
     if (!validacao.valido) {
       await enviarResposta(
         phone,
-        `A soma das formas de pagamento deu ${formatarReal(validacao.soma)}, mas o total do pedido é ${formatarReal(totalParaPagamento)}. 😅\n\nPode me passar novamente a divisão?`
+        `A soma das formas de pagamento deu ${formatarReal(validacao.soma)}, mas o total do pedido Ã© ${formatarReal(totalParaPagamento)}. ðŸ˜…\n\nPode me passar novamente a divisÃ£o?`
       );
 
       return;
@@ -1852,9 +1439,9 @@ async function processarMensagem(
       `${formatarPagamentoMisto(pagamentoMisto)}\n\n` +
       `A soma confere exatamente com o total.\n` +
       `Use esses valores no resumo final.\n` +
-      `Não recalcule.\n` +
-      `Não trate nenhuma das parcelas isoladamente como se precisasse pagar o pedido inteiro.\n` +
-      `Não pergunte troco automaticamente apenas porque existe uma parcela em dinheiro.`;
+      `NÃ£o recalcule.\n` +
+      `NÃ£o trate nenhuma das parcelas isoladamente como se precisasse pagar o pedido inteiro.\n` +
+      `NÃ£o pergunte troco automaticamente apenas porque existe uma parcela em dinheiro.`;
   }
 
   // ===================================================
@@ -1884,7 +1471,7 @@ async function processarMensagem(
         false;
 
       mensagemParaIA =
-        `O cliente escolheu dinheiro e NÃO precisa de troco. Continue para a finalização.`;
+        `O cliente escolheu dinheiro e NÃƒO precisa de troco. Continue para a finalizaÃ§Ã£o.`;
     } else {
       const valor =
         extrairValorMonetario(
@@ -1904,7 +1491,7 @@ async function processarMensagem(
 
           await enviarResposta(
             phone,
-            `O total do pedido é ${formatarReal(total)}. O valor informado (${formatarReal(valor)}) é menor que o total. 😅\n\nVocê vai pagar com qual valor?`
+            `O total do pedido Ã© ${formatarReal(total)}. O valor informado (${formatarReal(valor)}) Ã© menor que o total. ðŸ˜…\n\nVocÃª vai pagar com qual valor?`
           );
 
           return;
@@ -1920,7 +1507,7 @@ async function processarMensagem(
           `PAGAMENTO VALIDADO PELO SISTEMA:\n` +
           `Forma: DINHEIRO\n` +
           `Total: ${formatarReal(total)}\n` +
-          `Cliente pagará com: ${formatarReal(valor)}\n` +
+          `Cliente pagarÃ¡ com: ${formatarReal(valor)}\n` +
           `Troco correto: ${formatarReal(troco)}\n\n` +
           `Use exatamente esses valores.`;
       } else {
@@ -1929,7 +1516,7 @@ async function processarMensagem(
 
         await enviarResposta(
           phone,
-          "Certo! Pagamento em dinheiro. 💵\n\nPrecisa de troco? Se sim, para quanto?"
+          "Certo! Pagamento em dinheiro. ðŸ’µ\n\nPrecisa de troco? Se sim, para quanto?"
         );
 
         return;
@@ -1956,7 +1543,7 @@ async function processarMensagem(
         `PAGAMENTO VALIDADO PELO SISTEMA:\n` +
         `Forma: DINHEIRO\n` +
         `Sem necessidade de troco.\n` +
-        `Continue a finalização e não pergunte pagamento novamente.`;
+        `Continue a finalizaÃ§Ã£o e nÃ£o pergunte pagamento novamente.`;
     } else {
       const valor =
         extrairValorMonetario(
@@ -1978,7 +1565,7 @@ async function processarMensagem(
         ) {
           await enviarResposta(
             phone,
-            `O total do pedido é ${formatarReal(total)}. O valor informado (${formatarReal(valor)}) é menor que o total. 😅\n\nVocê vai pagar com qual valor?`
+            `O total do pedido Ã© ${formatarReal(total)}. O valor informado (${formatarReal(valor)}) Ã© menor que o total. ðŸ˜…\n\nVocÃª vai pagar com qual valor?`
           );
 
           return;
@@ -1995,7 +1582,7 @@ async function processarMensagem(
             `PAGAMENTO VALIDADO PELO SISTEMA:\n` +
             `Forma: DINHEIRO\n` +
             `Total: ${formatarReal(total)}\n` +
-            `Cliente pagará com: ${formatarReal(valor)}\n` +
+            `Cliente pagarÃ¡ com: ${formatarReal(valor)}\n` +
             `Troco correto: ${formatarReal(troco)}\n\n` +
             `Use exatamente esses valores.`;
         }
@@ -2004,7 +1591,7 @@ async function processarMensagem(
   }
 
   // ===================================================
-  // CONTEXTO EXPLÍCITO
+  // CONTEXTO EXPLÃCITO
   // ===================================================
 
   const contexto =
@@ -2083,7 +1670,7 @@ async function processarMensagem(
     resposta,
     {
       // Se acabou de confirmar,
-      // não tem por que lembrar o cliente
+      // nÃ£o tem por que lembrar o cliente
       // depois.
       agendarReminder:
         !confirmandoFinal,
@@ -2099,10 +1686,10 @@ async function processarMensagem(
       `PEDIDO FINALIZADO: ${phone}`
     );
 
-    // Não limpa a sessão imediatamente.
-    // O lembrete já não será agendado após a confirmação.
-    // A sessão será esquecida automaticamente após
-    // 4 horas sem atividade pela regra de expiração.
+    // NÃ£o limpa a sessÃ£o imediatamente.
+    // O lembrete jÃ¡ nÃ£o serÃ¡ agendado apÃ³s a confirmaÃ§Ã£o.
+    // A sessÃ£o serÃ¡ esquecida automaticamente apÃ³s
+    // 4 horas sem atividade pela regra de expiraÃ§Ã£o.
   }
 }
 
@@ -2185,7 +1772,7 @@ app.post(
     );
 
     // Se passou 4 horas:
-    // mensagem começa sessão nova.
+    // mensagem comeÃ§a sessÃ£o nova.
     if (
       sessaoExpirada(phone)
     ) {
@@ -2214,7 +1801,7 @@ app.post(
 
           await enviarMensagemZAPI(
             phone,
-            "🔄 Conversa reiniciada. Pode mandar sua mensagem para começar novamente."
+            "ðŸ”„ Conversa reiniciada. Pode mandar sua mensagem para comeÃ§ar novamente."
           );
         }
       ).catch((error) => {
@@ -2305,6 +1892,6 @@ app.listen(PORT, () => {
   );
 
   console.log(
-    `Expiração da sessão: ${EXPIRACAO_SESSAO_MS}ms`
+    `ExpiraÃ§Ã£o da sessÃ£o: ${EXPIRACAO_SESSAO_MS}ms`
   );
 });
