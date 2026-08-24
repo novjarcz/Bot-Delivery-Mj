@@ -146,42 +146,101 @@ function encontrarProdutosNaMensagem(texto) {
         .filter((palavra) => palavra.length >= 4);
 
       let pontuacao = 0;
+      const correspondencias = [];
 
-      // Nome completo aparece na mensagem.
+      // Nome completo.
       if (nome && mensagem.includes(nome)) {
         pontuacao += 10;
+        correspondencias.push("nome_completo");
       }
 
-      // Procura palavras relevantes do nome.
+      // Palavras relevantes do nome.
       for (const palavra of palavrasNome) {
         if (mensagem.includes(palavra)) {
           pontuacao += 2;
+          correspondencias.push(
+            `nome:${palavra}`
+          );
         }
       }
 
-      // Procura opções do produto.
+      // Opções:
+      // Coca-Cola, Guaraná, com gás etc.
       for (const opcao of produto.opcoes || []) {
         const opcaoNormalizada =
           normalizarBusca(opcao);
+
+        const palavrasOpcao =
+          opcaoNormalizada
+            .split(/\s+/)
+            .filter(
+              (palavra) =>
+                palavra.length >= 4
+            );
 
         if (
           opcaoNormalizada &&
           mensagem.includes(opcaoNormalizada)
         ) {
-          pontuacao += 4;
+          pontuacao += 6;
+          correspondencias.push(
+            `opcao:${opcao}`
+          );
+        } else {
+          for (const palavra of palavrasOpcao) {
+            if (mensagem.includes(palavra)) {
+              pontuacao += 4;
+              correspondencias.push(
+                `opcao:${opcao}`
+              );
+              break;
+            }
+          }
         }
       }
 
-      // Procura variações, como 250g, 500g, 2L etc.
+      // Variações:
+      // 250g, 500g etc.
       for (const variacao of produto.variacoes || []) {
         const nomeVariacao =
-          normalizarBusca(variacao.nome || "");
+          normalizarBusca(
+            variacao.nome || ""
+          );
 
         if (
           nomeVariacao &&
           mensagem.includes(nomeVariacao)
         ) {
-          pontuacao += 3;
+          pontuacao += 5;
+          correspondencias.push(
+            `variacao:${variacao.nome}`
+          );
+        }
+      }
+
+      // Tamanho embutido no próprio nome:
+      // Refrigerante 2L, Heineken 600ml etc.
+      const medidasProduto =
+        nome.match(
+          /\b\d+(?:[.,]\d+)?\s*(?:ml|l|g|kg)\b/g
+        ) || [];
+
+      for (const medida of medidasProduto) {
+        const medidaLimpa =
+          medida.replace(/\s+/g, "");
+
+        const mensagemSemEspacos =
+          mensagem.replace(/\s+/g, "");
+
+        if (
+          mensagemSemEspacos.includes(
+            medidaLimpa
+          )
+        ) {
+          pontuacao += 6;
+          correspondencias.push(
+            `medida:${medida}`
+          );
         }
       }
 
@@ -194,16 +253,37 @@ function encontrarProdutosNaMensagem(texto) {
         resultados.push({
           ...produto,
           categoria: categoria.nome,
-          pontuacao
+          pontuacao,
+          correspondencias
         });
       }
     }
   }
 
   return resultados
-    .sort((a, b) => b.pontuacao - a.pontuacao)
+    .sort((a, b) => {
+      // Em conversa de delivery,
+      // se houver versões mesa/delivery,
+      // favorece delivery.
+      if (
+        a.contexto === "delivery" &&
+        b.contexto === "mesa"
+      ) {
+        return -1;
+      }
+
+      if (
+        a.contexto === "mesa" &&
+        b.contexto === "delivery"
+      ) {
+        return 1;
+      }
+
+      return b.pontuacao - a.pontuacao;
+    })
     .slice(0, 8);
 }
+
 
 // =====================================================
 // CONFIGURAÇÕES
