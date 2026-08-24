@@ -163,7 +163,23 @@ function encontrarProdutosNaMensagem(texto) {
           );
         }
       }
+// Aliases:
+// coração, coraçãozinho, coca, refri etc.
+for (const alias of produto.aliases || []) {
+  const aliasNormalizado =
+    normalizarBusca(alias);
 
+  if (
+    aliasNormalizado &&
+    mensagem.includes(aliasNormalizado)
+  ) {
+    pontuacao += 8;
+
+    correspondencias.push(
+      `alias:${alias}`
+    );
+  }
+}
       // Opções:
       // Coca-Cola, Guaraná, com gás etc.
       for (const opcao of produto.opcoes || []) {
