@@ -536,16 +536,6 @@ function mensagemEscolheDinheiro(texto) {
   );
 }
 
-function possuiOpcaoBorda(texto) {
-  const mensagem =
-    normalizarTexto(texto);
-
-  return (
-    mensagem.includes("catupiry") ||
-    mensagem.includes("cheddar") ||
-    mensagem.includes("chocolate")
-  );
-}
 
 function possuiBebida(texto) {
   const mensagem =
@@ -646,17 +636,6 @@ function detectarContextoAtual(
     return "BEBIDA";
   }
 
-  if (
-    ultima.includes("qual borda") ||
-    ultima.includes(
-      "adicionar uma borda"
-    ) ||
-    ultima.includes(
-      "opcao de borda"
-    )
-  ) {
-    return "BORDA";
-  }
 
   if (
     ultima.includes("porcao") ||
@@ -1347,7 +1326,7 @@ async function processarMensagem(
 
   // Qualquer outra primeira mensagem
   // segue direto para a IA.
-  // "quero pizza", "boa boa", "tem coca?" etc.
+  // "quero espetinho", "boa boa", "tem coca?" etc.
 
   let mensagemParaIA =
     userMessage;
@@ -1371,17 +1350,6 @@ async function processarMensagem(
       historico
     );
 
-  if (
-    contextoAtual === "BEBIDA" &&
-    possuiOpcaoBorda(userMessage) &&
-    !possuiBebida(userMessage)
-  ) {
-    mensagemParaIA =
-      `ATENÃ‡ÃƒO: o cliente mencionou uma opÃ§Ã£o de BORDA, nÃ£o uma bebida.\n\n` +
-      `Mensagem original:\n${userMessage}\n\n` +
-      `Interprete como escolha/correÃ§Ã£o de borda e depois volte Ã  bebida. ` +
-      `Nunca chame Catupiry, Cheddar ou Chocolate de bebida.`;
-  }
 
   // ===================================================
   // PAGAMENTO MISTO
@@ -1834,7 +1802,7 @@ app.post(
 
 app.get("/", (req, res) => {
   res.send(
-    "MJ Pizzaria rodando"
+    "Tiquinho Espetinhos rodando"
   );
 });
 
