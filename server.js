@@ -357,6 +357,19 @@ const systemPrompt = fs.readFileSync(
   "./prompt-tiquinho.txt",
   "utf8"
 );
+function criarEstadoNovo() {
+  return {
+    aguardandoTroco: false,
+    totalAtual: null,
+
+    ultimaAtividade: Date.now(),
+
+    lembreteEnviado: false,
+    timerLembrete: null,
+
+    sessaoAtiva: true,
+  };
+}
 
 function obterEstado(phone) {
   if (!estadoPorTelefone[phone]) {
