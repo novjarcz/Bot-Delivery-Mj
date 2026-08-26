@@ -52,7 +52,7 @@ const openai = new OpenAI({
 // =====================================================
 
 const DEBOUNCE_MS = 4000;
-const LEMBRETE_MS = 60 * 1000;
+const LEMBRETE_MS = 5 * 60 * 1000;
 const EXPIRACAO_SESSAO_MS =
   4 * 60 * 60 * 1000;
 
@@ -184,6 +184,22 @@ function ehConfirmacao(texto) {
 function ehNegacao(texto) {
   const msg =
     normalizarTexto(texto);
+
+function ehPerguntaTotal(texto) {
+  const msg = normalizarTexto(texto);
+
+  return (
+    msg.includes("qual valor total") ||
+    msg.includes("qual o valor total") ||
+    msg.includes("valor total") ||
+    msg.includes("valor do pedido") ||
+    msg.includes("quanto deu") ||
+    msg.includes("quanto ficou") ||
+    msg.includes("quanto que deu") ||
+    msg.includes("qual total") ||
+    msg.includes("qual o total")
+  );
+}
 
   return (
     msg === "nao" ||
@@ -3587,6 +3603,7 @@ function acumularMensagem(
     }, DEBOUNCE_MS);
 }
 
+
 // =====================================================
 // Z-API
 // =====================================================
@@ -3719,6 +3736,7 @@ async function processarMensagem(
       estado.etapa =
         "FINALIZADO";
 
+
       historico.push({
         role: "user",
         content:
@@ -3826,6 +3844,71 @@ async function processarMensagem(
   }
 
   // ===================================================
+  // CONSULTA DE TOTAL A QUALQUER MOMENTO
+  // ===================================================
+
+  if (
+    ehPerguntaTotal(userMessage) &&
+    pedidoTemItens(estado)
+  ) {
+    recalcularPedido(estado);
+
+    let resposta;
+
+    if (
+      estado.entrega.precisaConsultar
+    ) {
+      resposta =
+        `Até agora o subtotal do pedido é *${formatarReal(
+          estado.pedido.subtotal
+        )}*.\n\n` +
+        `A entrega precisa ser consultada, então o total final ainda está a confirmar.`;
+    } else {
+      resposta =
+        `Até agora ficou assim:\n\n` +
+        `${gerarResumoItens(estado)}\n\n` +
+        `Subtotal: *${formatarReal(
+          estado.pedido.subtotal
+        )}*\n` +
+        `${
+          estado.pedido.taxaEntrega === 0
+            ? "Entrega: *Grátis*"
+            : `Entrega: *${formatarReal(
+                estado.pedido.taxaEntrega
+              )}*`
+        }\n` +
+        `Total: *${formatarReal(
+          estado.pedido.total
+        )}*`;
+    }
+
+    if (estado.etapa === "TROCO") {
+      resposta +=
+        `\n\nSe for pagar em dinheiro, precisa de troco? Se sim, para quanto?`;
+    }
+
+    historico.push({
+      role: "user",
+      content: userMessage,
+    });
+
+    historico.push({
+      role: "assistant",
+      content: resposta,
+    });
+
+    historicoPorTelefone[phone] =
+      historico.slice(-MAX_MESSAGES);
+
+    await enviarResposta(
+      phone,
+      resposta
+    );
+
+    return;
+  }
+
+  // ===================================================
   // DETECÇÃO + IA
   // ===================================================
 
@@ -3870,6 +3953,133 @@ async function processarMensagem(
         produtosDetectados,
         userMessage
       );
+
+  const categoriaConsultada =
+    detectarCategoriaConsultada(
+      userMessage
+    );
+
+  if (categoriaConsultada) {
+    const lista =
+      listarCategoriaCardapio(
+        categoriaConsultada
+      );
+
+    if (lista) {
+      return lista;
+    }
+  }
+
+function detectarCategoriaConsultada(texto) {
+  const msg = normalizarTexto(texto);
+
+
+  if (
+    msg.includes("jantinha") ||
+    msg.includes("jantinhas") ||
+    msg.includes("juntinha") ||
+    msg.includes("juntinhas")
+  ) {
+    return "jantinhas";
+  }
+
+  if (
+    msg.includes("porcao") ||
+    msg.includes("porcoes")
+  ) {
+    return "porcoes";
+  }
+
+  if (
+    msg.includes("espetinho") ||
+    msg.includes("espetinhos")
+  ) {
+    return "espetinhos";
+  }
+
+  if (
+    msg.includes("combo") ||
+    msg.includes("combos")
+  ) {
+    return "combos";
+  }
+
+  if (
+    msg.includes("bebida") ||
+    msg.includes("bebidas")
+  ) {
+    return "bebidas";
+  }
+
+  if (
+    msg.includes("geladinho") ||
+    msg.includes("geladinhos")
+  ) {
+    return "geladinhos";
+  }
+
+  return null;
+}
+
+function listarCategoriaCardapio(categoriaId) {
+  const categoria =
+    (cardapio.categorias || []).find(
+      (item) =>
+        item.id === categoriaId
+    );
+
+  if (!categoria) {
+    return null;
+  }
+
+  const linhas = [
+    `*${categoria.nome}*`,
+    "",
+  ];
+
+  for (const produto of categoria.produtos || []) {
+    if (produto.disponivel === false) {
+      continue;
+    }
+
+    if (produto.contexto === "mesa") {
+      continue;
+    }
+
+    let linha = `• ${produto.nome}`;
+
+    if (
+      Number.isFinite(
+        Number(produto.preco)
+      )
+    ) {
+      linha +=
+        ` — ${formatarReal(
+          produto.preco
+        )}`;
+    }
+
+    linhas.push(linha);
+
+    if (
+      Array.isArray(produto.variacoes) &&
+      produto.variacoes.length > 0
+    ) {
+      linhas.push(
+        `  ${produto.variacoes
+          .map(
+            (variacao) =>
+              `${variacao.nome} ${formatarReal(
+                variacao.preco
+              )}`
+          )
+          .join(" • ")}`
+      );
+    }
+  }
+
+  return linhas.join("\n");
+}
 
     historico.push({
       role:
