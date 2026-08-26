@@ -52,7 +52,7 @@ const openai = new OpenAI({
 // =====================================================
 
 const DEBOUNCE_MS = 4000;
-const LEMBRETE_MS = 5 * 60 * 1000;
+const LEMBRETE_MS = 60 * 1000;
 const EXPIRACAO_SESSAO_MS =
   4 * 60 * 60 * 1000;
 
@@ -148,56 +148,6 @@ function normalizarTexto(texto = "") {
 const normalizarBusca =
   normalizarTexto;
 
-function ehPerguntaTotal(texto) {
-  const msg = normalizarTexto(texto);
-
-  const perguntasDiretas = [
-    "qual o valor total",
-    "qual valor total",
-    "qual o total",
-    "quanto deu",
-    "quanto que deu",
-    "quanto ficou",
-    "quanto ficou o pedido",
-    "quanto deu o pedido",
-    "qual valor do pedido",
-    "qual o valor do pedido",
-    "valor do pedido",
-    "total do pedido",
-    "quanto ta dando",
-    "quanto esta dando",
-    "quanto deu ate agora",
-    "quanto ficou ate agora",
-  ];
-
-  return perguntasDiretas.some(
-    (frase) => msg.includes(frase)
-  );
-}
-
-function ehPerguntaCategoria(texto) {
-  const msg = normalizarTexto(texto);
-
-  const sinaisConsulta = [
-    "quais",
-    "qual tem",
-    "quais tem",
-    "o que tem",
-    "oque tem",
-    "que tem",
-    "tem quais",
-    "me mostra",
-    "me manda",
-    "me fala",
-    "quais sao",
-    "opcoes",
-  ];
-
-  return sinaisConsulta.some(
-    (sinal) => msg.includes(sinal)
-  );
-}
-
 function ehSaudacaoPura(texto) {
   const mensagem =
     normalizarTexto(texto);
@@ -234,7 +184,6 @@ function ehConfirmacao(texto) {
 function ehNegacao(texto) {
   const msg =
     normalizarTexto(texto);
-
 
   return (
     msg === "nao" ||
@@ -3068,136 +3017,6 @@ function descreverProduto(
   return linhas.join("\n");
 }
 
-function detectarCategoriaConsultada(texto) {
-  const msg = normalizarTexto(texto);
-
-  const pareceConsulta =
-    msg.includes("quais") ||
-    msg.includes("qual tem") ||
-    msg.includes("o que tem") ||
-    msg.includes("que tem") ||
-    msg.includes("quais tem") ||
-    msg.includes("me mostra") ||
-    msg.includes("me manda") ||
-    msg.includes("opcoes");
-
-  if (!pareceConsulta) {
-    return null;
-  }
-
-  if (
-    msg.includes("jantinha") ||
-    msg.includes("jantinhas") ||
-    msg.includes("juntinha") ||
-    msg.includes("juntinhas")
-  ) {
-    return "jantinhas";
-  }
-
-  if (
-    msg.includes("porcao") ||
-    msg.includes("porcoes")
-  ) {
-    return "porcoes";
-  }
-
-  if (
-    msg.includes("espetinho") ||
-    msg.includes("espetinhos")
-  ) {
-    return "espetinhos";
-  }
-
-  if (
-    msg.includes("bebida") ||
-    msg.includes("bebidas")
-  ) {
-    return "bebidas";
-  }
-
-  if (
-    msg.includes("combo") ||
-    msg.includes("combos")
-  ) {
-    return "combos";
-  }
-
-  if (
-    msg.includes("geladinho") ||
-    msg.includes("geladinhos")
-  ) {
-    return "geladinhos";
-  }
-
-  return null;
-}
-
-function listarCategoriaCardapio(categoriaId) {
-  const categoria =
-    (cardapio.categorias || []).find(
-      (item) =>
-        item.id === categoriaId
-    );
-
-  if (!categoria) {
-    return null;
-  }
-
-  const linhas = [
-    `*${categoria.nome}*`,
-    "",
-  ];
-
-  for (
-    const produto of
-    categoria.produtos || []
-  ) {
-    if (
-      produto.disponivel === false ||
-      produto.contexto === "mesa"
-    ) {
-      continue;
-    }
-
-    let linha =
-      `• ${produto.nome}`;
-
-    if (
-      Number.isFinite(
-        Number(produto.preco)
-      )
-    ) {
-      linha +=
-        ` — ${formatarReal(
-          produto.preco
-        )}`;
-    }
-
-    linhas.push(linha);
-
-    if (
-      Array.isArray(
-        produto.variacoes
-      ) &&
-      produto.variacoes.length > 0
-    ) {
-      linhas.push(
-        "  " +
-        produto.variacoes
-          .map(
-            (variacao) =>
-              `${variacao.nome} — ${formatarReal(
-                variacao.preco
-              )}`
-          )
-          .join(" • ")
-      );
-    }
-  }
-
-  return linhas.join("\n");
-}
-
 function responderConsulta(
   interpretacao,
   produtosDetectados,
@@ -3207,22 +3026,6 @@ function responderConsulta(
     normalizarTexto(
       userMessage
     );
-
-  const categoriaConsultada =
-    detectarCategoriaConsultada(
-      userMessage
-    );
-
-  if (categoriaConsultada) {
-    const lista =
-      listarCategoriaCardapio(
-        categoriaConsultada
-      );
-
-    if (lista) {
-      return lista;
-    }
-  }
 
   if (
     msg.includes(
@@ -3383,8 +3186,6 @@ function continuarFluxo(
     encontrarPendencia(
       estado
     );
-
-  
 
   if (pendencia) {
     estado.pendencia = {
@@ -3786,7 +3587,6 @@ function acumularMensagem(
     }, DEBOUNCE_MS);
 }
 
-
 // =====================================================
 // Z-API
 // =====================================================
@@ -3919,7 +3719,6 @@ async function processarMensagem(
       estado.etapa =
         "FINALIZADO";
 
-
       historico.push({
         role: "user",
         content:
@@ -4027,71 +3826,6 @@ async function processarMensagem(
   }
 
   // ===================================================
-  // CONSULTA DE TOTAL A QUALQUER MOMENTO
-  // ===================================================
-
-  if (
-    ehPerguntaTotal(userMessage) &&
-    pedidoTemItens(estado)
-  ) {
-    recalcularPedido(estado);
-
-    let resposta;
-
-    if (
-      estado.entrega.precisaConsultar
-    ) {
-      resposta =
-        `Até agora o subtotal do pedido é *${formatarReal(
-          estado.pedido.subtotal
-        )}*.\n\n` +
-        `A entrega precisa ser consultada, então o total final ainda está a confirmar.`;
-    } else {
-      resposta =
-        `Até agora ficou assim:\n\n` +
-        `${gerarResumoItens(estado)}\n\n` +
-        `Subtotal: *${formatarReal(
-          estado.pedido.subtotal
-        )}*\n` +
-        `${
-          estado.pedido.taxaEntrega === 0
-            ? "Entrega: *Grátis*"
-            : `Entrega: *${formatarReal(
-                estado.pedido.taxaEntrega
-              )}*`
-        }\n` +
-        `Total: *${formatarReal(
-          estado.pedido.total
-        )}*`;
-    }
-
-    if (estado.etapa === "TROCO") {
-      resposta +=
-        `\n\nSe for pagar em dinheiro, precisa de troco? Se sim, para quanto?`;
-    }
-
-    historico.push({
-      role: "user",
-      content: userMessage,
-    });
-
-    historico.push({
-      role: "assistant",
-      content: resposta,
-    });
-
-    historicoPorTelefone[phone] =
-      historico.slice(-MAX_MESSAGES);
-
-    await enviarResposta(
-      phone,
-      resposta
-    );
-
-    return;
-  }
-
-  // ===================================================
   // DETECÇÃO + IA
   // ===================================================
 
@@ -4137,7 +3871,6 @@ async function processarMensagem(
         userMessage
       );
 
-
     historico.push({
       role:
         "user",
@@ -4178,58 +3911,6 @@ async function processarMensagem(
       estado,
       interpretacao.acoes
     );
-
-  // ===================================================
-  // CONSULTA EMBUTIDA EM MENSAGEM DE PEDIDO
-  // Ex:
-  // "quero 2 carnes e quais as porções?"
-  // ===================================================
-
-  const categoriaConsultada =
-    detectarCategoriaConsultada(
-      userMessage
-    );
-
-  if (
-  categoriaConsultada &&
-  ehPerguntaCategoria(userMessage) &&
-  interpretacao.intent !== "consulta"
-) {
-    const listaCategoria =
-      listarCategoriaCardapio(
-        categoriaConsultada
-      );
-
-    if (listaCategoria) {
-      const resposta =
-        obterAvisoHorario(
-          estado
-        ) +
-        listaCategoria;
-
-      historico.push({
-        role: "user",
-        content: userMessage,
-      });
-
-      historico.push({
-        role: "assistant",
-        content: resposta,
-      });
-
-      historicoPorTelefone[phone] =
-        historico.slice(
-          -MAX_MESSAGES
-        );
-
-      await enviarResposta(
-        phone,
-        resposta
-      );
-
-      return;
-    }
-  }
 
   // ===================================================
   // DADOS DE ENTREGA

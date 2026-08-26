@@ -1,0 +1,452 @@
+{
+  "estabelecimento": {
+    "nome": "Tiquinho Espetinhos",
+    "versao_cardapio": "2026"
+  },
+  "categorias": [
+    {
+      "id": "espetinhos",
+      "nome": "Espetinhos",
+      "produtos": [
+        { "id": "esp_carne", "nome": "Carne", "preco": 11.00, "disponivel": true, "imagem": null },
+        { "id": "esp_carne_bacon", "nome": "Carne com Bacon", "preco": 11.00, "disponivel": true, "imagem": null },
+        { "id": "esp_carne_pimentao_cebola", "nome": "Carne com Pimentão e Cebola", "preco": 11.00, "disponivel": true, "imagem": null },
+        { "id": "esp_file_mignon", "nome": "Filé Mignon", "preco": 15.00, "disponivel": true, "imagem": null },
+        { "id": "esp_frango", "nome": "Frango", "preco": 10.00, "disponivel": true, "imagem": null },
+        { "id": "esp_frango_bacon", "nome": "Frango com Bacon", "preco": 10.00, "disponivel": true, "imagem": null },
+        { "id": "esp_kafta", "nome": "Kafta", "preco": 11.00, "disponivel": true, "imagem": null },
+        { "id": "esp_linguicinha", "nome": "Linguicinha", "preco": 10.00, "disponivel": true, "imagem": null },
+        { "id": "esp_pao_alho", "nome": "Pão de Alho", "preco": 10.00, "disponivel": true, "imagem": null },
+        { "id": "esp_queijo", "nome": "Queijo", "preco": 10.00, "disponivel": true, "imagem": null },
+        { "id": "esp_meio_asa", "nome": "Meio da Asa", "preco": 11.00, "disponivel": true, "imagem": null },
+        { "id": "esp_coracao_frango", "nome": "Coração de Frango", "preco": 11.00, "disponivel": true, "aliases": ["coracao", "coracaozinho", "coracao de frango"], "imagem": null },
+        { "id": "esp_carne_porco", "nome": "Carne de Porco", "preco": 10.00, "disponivel": true, "imagem": null },
+        { "id": "esp_costela_bovina", "nome": "Costela Bovina", "preco": 11.00, "disponivel": true, "imagem": null }
+      ]
+    },
+    {
+      "id": "medalhao",
+      "nome": "Espetinhos de Medalhão",
+      "produtos": [
+        { "id": "med_carne_boi", "nome": "Medalhão de Carne de Boi", "preco": 17.00, "disponivel": true, "imagem": null },
+        { "id": "med_frango", "nome": "Medalhão de Frango", "preco": 15.00, "disponivel": true, "aliases": ["medalhao frango", "medalhao de frango"], "imagem": null },
+        { "id": "med_carne_bacon_queijo", "nome": "Medalhão de Carne, Bacon e Queijo", "preco": 20.00, "disponivel": true, "imagem": null }
+      ]
+    },
+    {
+      "id": "jantinhas",
+      "nome": "Jantinhas",
+      "produtos": [
+{
+  "id": "jantinha_1",
+  "nome": "Jantinha 1",
+  "preco": 24.00,
+  "disponivel": true,
+  "aliases": ["jantinha 1", "janta 1"],
+  "descricao": "Arroz, mandioca ou batata frita, farofa caseira, salada e um espetinho normal.",
+          "escolhas": [
+            {
+              "id": "acompanhamento",
+              "nome": "Acompanhamento",
+              "obrigatorio": true,
+              "min": 1,
+              "max": 1,
+              "opcoes": ["Mandioca", "Batata frita"]
+            }
+          ],
+          "imagem": null
+        },
+        {
+          "id": "jantinha_2",
+          "nome": "Jantinha 2",
+          "preco": 26.00,
+          "disponivel": true,
+          "descricao": "Arroz, mandioca ou batata frita, farofa caseira, salada e um espetinho de medalhão.",
+          "escolhas": [
+            {
+              "id": "acompanhamento",
+              "nome": "Acompanhamento",
+              "obrigatorio": true,
+              "min": 1,
+              "max": 1,
+              "opcoes": ["Mandioca", "Batata frita"]
+            }
+          ],
+          "imagem": null
+        },
+        {
+          "id": "jantinha_3",
+          "nome": "Jantinha 3",
+          "preco": 29.00,
+          "disponivel": true,
+          "descricao": "Arroz, mandioca ou batata frita, farofa caseira, salada e um espetinho de medalhão de carne, bacon e queijo.",
+          "escolhas": [
+            {
+              "id": "acompanhamento",
+              "nome": "Acompanhamento",
+              "obrigatorio": true,
+              "min": 1,
+              "max": 1,
+              "opcoes": ["Mandioca", "Batata frita"]
+            }
+          ],
+          "imagem": null
+        }
+      ]
+    },
+    {
+      "id": "mini_porcoes",
+      "nome": "Mini Porções",
+      "produtos": [
+        {
+          "id": "mini_1",
+          "nome": "Mini Porção 1",
+          "preco": 33.00,
+          "disponivel": true,
+          "descricao": "Frango (300g) e Batata (300g).",
+          "imagem": null
+        },
+        {
+          "id": "mini_2",
+          "nome": "Mini Porção 2",
+          "preco": 40.00,
+          "disponivel": true,
+          "descricao": "Filé de Tilápia (300g) e Batata (300g).",
+          "imagem": null
+        },
+        {
+          "id": "mini_3",
+          "nome": "Mini Porção 3",
+          "preco": 55.00,
+          "disponivel": true,
+          "descricao": "Frango (300g), Batata (300g) e Filé de Tilápia (300g).",
+          "imagem": null
+        }
+      ]
+    },
+    {
+      "id": "trios",
+      "nome": "Trios",
+      "produtos": [
+        {
+          "id": "trio_1",
+          "nome": "Trio 1",
+          "preco": 80.00,
+          "disponivel": true,
+          "descricao": "Batata, peixe e frango (1,200kg).",
+          "imagem": null
+        },
+        {
+          "id": "trio_2",
+          "nome": "Trio 2",
+          "preco": 47.00,
+          "disponivel": true,
+          "descricao": "Filé de tilápia, batata e polenta (900g).",
+          "imagem": null
+        },
+        {
+          "id": "trio_3",
+          "nome": "Trio 3",
+          "preco": 40.00,
+          "disponivel": true,
+          "descricao": "Frango, batata e polenta (900g).",
+          "imagem": null
+        },
+        {
+          "id": "trio_4",
+          "nome": "Trio 4",
+          "preco": 150.00,
+          "disponivel": true,
+          "descricao": "Filé de tilápia (1kg), Batata (1kg) e frango (1kg).",
+          "imagem": null
+        }
+      ]
+    },
+    {
+      "id": "porcoes",
+      "nome": "Porções",
+      "observacao": "As porções são pesadas cruas.",
+      "produtos": [
+        {
+  "id": "porcao_batata",
+  "nome": "Batata",
+  "disponivel": true,
+  "aliases": ["batata", "batata frita", "fritas"],
+  "variacoes": [
+    { "nome": "250g", "preco": 18.00 },
+    { "nome": "500g", "preco": 30.00 }
+  ],
+  "imagem": null
+},
+        {
+          "id": "porcao_batata_cheddar",
+          "nome": "Batata com Cheddar",
+          "disponivel": true,
+          "variacoes": [
+            { "nome": "250g", "preco": 22.00 },
+            { "nome": "500g", "preco": 39.00 }
+          ],
+          "imagem": null
+        },
+        {
+          "id": "porcao_polenta",
+          "nome": "Polenta Frita Caseira",
+          "disponivel": true,
+          "variacoes": [
+            { "nome": "250g", "preco": 18.00 },
+            { "nome": "500g", "preco": 30.00 }
+          ],
+          "imagem": null
+        },
+        {
+          "id": "porcao_tilapia",
+          "nome": "Filé de Tilápia",
+          "disponivel": true,
+          "variacoes": [
+            { "nome": "250g", "preco": 29.00 },
+            { "nome": "500g", "preco": 55.00 }
+          ],
+          "imagem": null
+        },
+        {
+          "id": "porcao_frango",
+          "nome": "Frango",
+          "disponivel": true,
+          "variacoes": [
+            { "nome": "250g", "preco": 19.00 },
+            { "nome": "500g", "preco": 33.00 }
+          ],
+          "imagem": null
+        },
+        {
+          "id": "porcao_queijo_coalho",
+          "nome": "Queijo Coalho Frito",
+          "disponivel": true,
+          "variacoes": [
+            { "nome": "200g", "preco": 45.00 },
+            { "nome": "400g", "preco": 70.00 }
+          ],
+          "imagem": null
+        },
+        {
+          "id": "porcao_mandioca",
+          "nome": "Mandioca Frita",
+          "disponivel": true,
+          "variacoes": [
+            { "nome": "250g", "preco": 18.00 },
+            { "nome": "500g", "preco": 30.00 }
+          ],
+          "imagem": null
+        },
+        {
+          "id": "porcao_tulipa",
+          "nome": "Tulipa",
+          "disponivel": true,
+          "variacoes": [
+            { "nome": "250g", "preco": 23.00 },
+            { "nome": "500g", "preco": 35.00 },
+            { "nome": "1kg", "preco": 60.00 }
+          ],
+          "imagem": null
+        },
+        {
+          "id": "costelinha_passarinho",
+          "nome": "Costelinha de Porco à Passarinho",
+          "disponivel": true,
+          "descricao": "Acompanha mandioca frita.",
+          "variacoes": [
+            { "nome": "500g", "preco": 35.00 },
+            { "nome": "1kg", "preco": 65.00 }
+          ],
+          "imagem": null
+        },
+        {
+          "id": "file_batata",
+          "nome": "Filé e Batata",
+          "preco": 70.00,
+          "disponivel": true,
+          "descricao": "Filé (500g) e Batata (500g).",
+          "imagem": null
+        },
+        {
+          "id": "frango_batata",
+          "nome": "Frango e Batata",
+          "preco": 48.00,
+          "disponivel": true,
+          "descricao": "Frango (500g) e Batata (500g).",
+          "imagem": null
+        },
+        {
+          "id": "bolinho_mandioca_costela",
+          "nome": "Bolinho de Mandioca recheada com Costela",
+          "disponivel": true,
+          "variacoes": [
+            { "nome": "300g", "preco": 25.00 },
+            { "nome": "600g", "preco": 45.00 }
+          ],
+          "imagem": null
+        }
+      ]
+    },
+    {
+      "id": "porcoes_individuais",
+      "nome": "Porções Individuais",
+      "produtos": [
+        { "id": "individual_mandioca", "nome": "Mandioca", "preco": 9.00, "disponivel": true, "imagem": null },
+        { "id": "individual_arroz", "nome": "Arroz", "preco": 9.00, "disponivel": true, "imagem": null },
+        { "id": "individual_salada", "nome": "Salada", "preco": 9.00, "disponivel": true, "imagem": null },
+        { "id": "individual_farofa", "nome": "Farofa", "preco": 9.00, "disponivel": true, "imagem": null }
+      ]
+    },
+    {
+      "id": "combos",
+      "nome": "Combos",
+      "produtos": [
+        {
+          "id": "combo_tiquinho",
+          "nome": "Combo Tiquinho Espetinho",
+          "preco": 90.00,
+          "disponivel": true,
+          "quantidade_espetinhos": 8,
+          "composicao": [
+            "1 Espetinho de linguicinha",
+            "1 Espetinho de coração de frango",
+            "1 Espetinho de costelinha de porco",
+            "1 Espetinho de frango",
+            "2 Espetinhos de carne",
+            "1 Espetinho de pão de alho",
+            "1 Espetinho de queijo",
+            "Batata (300g)",
+            "Mandioca frita (300g)"
+          ],
+          "imagem": null
+        },
+        {
+          "id": "combo_gigante",
+          "nome": "Combo Gigante",
+          "preco": 170.00,
+          "disponivel": true,
+"aliases": ["combo gigante", "gigante"],
+          "quantidade_espetinhos": 16,
+          "composicao": [
+
+            "4 Espetinhos de carne",
+            "2 Espetinhos de frango",
+            "2 Espetinhos de coração de frango",
+            "2 Espetinhos de pão de alho",
+            "2 Espetinhos de queijo",
+            "2 Espetinhos de linguicinha",
+            "2 Espetinhos de costelinha de porco",
+            "Batata (500g)",
+            "Mandioca frita (500g)"
+          ],
+          "imagem": null
+        },
+        {
+          "id": "combo_carne_bovina",
+          "nome": "Combo de Carne Bovina",
+          "preco": 125.00,
+          "disponivel": true,
+          "quantidade_espetinhos": 10,
+          "composicao": [
+            "10 Espetinhos de carne bovina",
+            "Batata (400g)",
+            "Mandioca frita (400g)"
+          ],
+          "imagem": null
+        }
+      ]
+    },
+    {
+      "id": "geladinhos",
+      "nome": "Geladinhos Gourmet",
+      "produtos": [
+        { "id": "gel_ninho_nutella", "nome": "Ninho com Nutella", "preco": 6.00, "disponivel": true, "imagem": null },
+        { "id": "gel_pacoquinha", "nome": "Paçoquinha", "preco": 6.00, "disponivel": true, "imagem": null },
+        { "id": "gel_pudim", "nome": "Pudim", "preco": 6.00, "disponivel": true, "imagem": null },
+        { "id": "gel_nutella", "nome": "Nutella", "preco": 6.00, "disponivel": true, "imagem": null },
+        { "id": "gel_chocolate_branco", "nome": "Chocolate Branco", "preco": 6.00, "disponivel": true, "imagem": null },
+        { "id": "gel_maracuja", "nome": "Maracujá Cremoso", "preco": 6.00, "disponivel": true, "imagem": null }
+      ]
+    },
+    {
+      "id": "bebidas",
+      "nome": "Bebidas",
+      "produtos": [
+        { "id": "skol_600", "nome": "Skol 600ml", "preco": 12.00, "disponivel": true, "imagem": null },
+        { "id": "original_600", "nome": "Original 600ml", "preco": 15.00, "disponivel": true, "imagem": null },
+        { "id": "antartica_600", "nome": "Antárctica Pinguim 600ml", "preco": 12.00, "disponivel": true, "imagem": null },
+        { "id": "heineken_600", "nome": "Heineken 600ml", "preco": 17.00, "disponivel": true, "imagem": null },
+        { "id": "heineken_330", "nome": "Heineken 330ml", "preco": 10.00, "disponivel": true, "imagem": null },
+        { "id": "conti_600", "nome": "Conti 600ml", "preco": 10.00, "disponivel": true, "imagem": null },
+        { "id": "amstel_lata", "nome": "Amstel Lata", "preco": 5.00, "disponivel": true, "imagem": null },
+        { "id": "conti_lata", "nome": "Conti Lata", "preco": 5.00, "disponivel": true, "imagem": null },
+        { "id": "skol_lata", "nome": "Skol Lata", "preco": 5.00, "disponivel": true, "imagem": null },
+        { "id": "antartica_lata", "nome": "Antárctica Pinguim Lata", "preco": 5.00, "disponivel": true, "imagem": null },
+        { "id": "brahma_lata", "nome": "Brahma Lata", "preco": 5.00, "disponivel": true, "imagem": null },
+
+        {
+  "id": "refrigerante_lata",
+  "nome": "Refrigerante Lata",
+  "preco": 6.00,
+  "disponivel": true,
+  "opcoes": ["Coca-Cola", "Guaraná", "Fanta", "Sprite"],
+  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana", "fanta", "sprite"],
+  "imagem": null
+},
+{
+  "id": "refrigerante_600",
+  "nome": "Refrigerante 600ml",
+  "preco": 9.00,
+  "disponivel": true,
+  "opcoes": ["Coca-Cola", "Guaraná"],
+  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana"],
+  "imagem": null
+},
+{
+  "id": "refrigerante_1l",
+  "nome": "Refrigerante 1L",
+  "preco": 10.00,
+  "disponivel": true,
+  "opcoes": ["Coca-Cola", "Guaraná"],
+  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana"],
+  "imagem": null
+},
+{
+  "id": "refrigerante_2l_delivery",
+  "nome": "Refrigerante 2L",
+  "contexto": "delivery",
+  "preco": 15.00,
+  "disponivel": true,
+  "opcoes": ["Coca-Cola", "Guaraná"],
+  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana"],
+  "imagem": null
+},
+{
+  "id": "refrigerante_2l_mesa",
+  "nome": "Refrigerante 2L",
+  "contexto": "mesa",
+  "preco": 16.00,
+  "disponivel": true,
+  "opcoes": ["Coca-Cola", "Guaraná"],
+  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana"],
+  "imagem": null
+},
+
+        { "id": "coca_ks_290", "nome": "Coca-Cola KS 290ml", "preco": 6.00, "disponivel": true, "imagem": null },
+        { "id": "agua_tonica", "nome": "Água Tônica", "preco": 7.00, "disponivel": true, "imagem": null },
+        { "id": "agua", "nome": "Água com ou sem Gás", "preco": 4.00, "disponivel": true, "opcoes": ["Com gás", "Sem gás"], "imagem": null },
+        { "id": "agua_saborizada", "nome": "Água Saborizada", "preco": 7.00, "disponivel": true, "imagem": null },
+        { "id": "del_valle_lata", "nome": "Suco Del Valle Lata", "preco": 7.00, "disponivel": true, "imagem": null },
+        { "id": "suco_kapo", "nome": "Suco Kapo", "preco": 5.00, "disponivel": true, "imagem": null },
+        { "id": "laranja_jarra", "nome": "Suco de Laranja Jarra", "preco": 20.00, "disponivel": true, "imagem": null },
+        { "id": "laranja_copo", "nome": "Suco de Laranja Copo", "preco": 12.00, "disponivel": true, "imagem": null },
+        { "id": "laranja_jarra_grande", "nome": "Suco de Laranja Jarra Grande", "preco": 35.00, "disponivel": true, "imagem": null },
+        { "id": "energetico_lata", "nome": "Energético Lata", "preco": 12.00, "disponivel": true, "imagem": null },
+        { "id": "energetico_2l", "nome": "Energético 2L", "preco": 15.00, "disponivel": true, "imagem": null },
+        { "id": "caipirinha_velho_barreiro", "nome": "Caipirinha Velho Barreiro", "preco": 15.00, "disponivel": true, "imagem": null },
+        { "id": "caipirinha_vodka", "nome": "Caipirinha Vodka", "preco": 15.00, "disponivel": true, "imagem": null }
+      ]
+    }
+  ]
+}
