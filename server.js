@@ -148,6 +148,33 @@ function normalizarTexto(texto = "") {
 const normalizarBusca =
   normalizarTexto;
 
+function ehPerguntaTotal(texto) {
+  const msg = normalizarTexto(texto);
+
+  const perguntasDiretas = [
+    "qual o valor total",
+    "qual valor total",
+    "qual o total",
+    "quanto deu",
+    "quanto que deu",
+    "quanto ficou",
+    "quanto ficou o pedido",
+    "quanto deu o pedido",
+    "qual valor do pedido",
+    "qual o valor do pedido",
+    "valor do pedido",
+    "total do pedido",
+    "quanto ta dando",
+    "quanto esta dando",
+    "quanto deu ate agora",
+    "quanto ficou ate agora",
+  ];
+
+  return perguntasDiretas.some(
+    (frase) => msg.includes(frase)
+  );
+}
+
 function ehSaudacaoPura(texto) {
   const mensagem =
     normalizarTexto(texto);
@@ -185,21 +212,6 @@ function ehNegacao(texto) {
   const msg =
     normalizarTexto(texto);
 
-function ehPerguntaTotal(texto) {
-  const msg = normalizarTexto(texto);
-
-  return (
-    msg.includes("qual valor total") ||
-    msg.includes("qual o valor total") ||
-    msg.includes("valor total") ||
-    msg.includes("valor do pedido") ||
-    msg.includes("quanto deu") ||
-    msg.includes("quanto ficou") ||
-    msg.includes("quanto que deu") ||
-    msg.includes("qual total") ||
-    msg.includes("qual o total")
-  );
-}
 
   return (
     msg === "nao" ||
