@@ -64,7 +64,7 @@ const openai = new OpenAI({
 // =====================================================
 
 // Junta mensagens enviadas rapidamente pelo cliente.
-const DEBOUNCE_MS = 4000;
+const DEBOUNCE_MS = 2500;
 
 // V2 estava com 1 minuto.
 // No V3 vamos deixar 5 minutos para não encher o saco
@@ -4017,8 +4017,7 @@ function responderUmaConsulta(
 ) {
   if (
     !consulta ||
-    typeof consulta !==
-      "object"
+    typeof consulta !== "object"
   ) {
     return null;
   }
@@ -4071,13 +4070,18 @@ function responderUmaConsulta(
       return null;
     }
 
-    const respostas =
-      [];
+    const respostas = [];
+    const produtosExibidos = [];
 
     for (
       const categoria of
       categorias
     ) {
+      const produtos =
+        produtosDaCategoria(
+          categoria.id
+        );
+
       const resposta =
         listarCategoriaPorId(
           categoria.id
@@ -4088,6 +4092,48 @@ function responderUmaConsulta(
           resposta
         );
       }
+
+      for (
+        const produto of
+        produtos
+      ) {
+        if (
+          produto &&
+          !produtosExibidos.some(
+            (item) =>
+              item.id ===
+              produto.id
+          )
+        ) {
+          produtosExibidos.push(
+            produto
+          );
+        }
+      }
+    }
+
+    if (
+      estado &&
+      produtosExibidos.length > 0
+    ) {
+      estado.ultimaLista = {
+        tipo: "categoria",
+
+        categoriaIds:
+          categorias.map(
+            (categoria) =>
+              categoria.id
+          ),
+
+        produtosIds:
+          produtosExibidos.map(
+            (produto) =>
+              produto.id
+          ),
+
+        criadoEm:
+          Date.now(),
+      };
     }
 
     return respostas.join(
@@ -4114,14 +4160,44 @@ function responderUmaConsulta(
     }
 
     // Se a busca ficou ambígua,
-    // não inventamos qual deles era.
+    // guardamos as opções mostradas para entender
+    // respostas como:
+    //
+    // "o segundo"
+    // "o de 20"
+    // "esse de bacon"
+    //
+    // sem procurar novamente nos 80 produtos.
     if (
       produtos.length > 1
     ) {
+      const produtosExibidos =
+        produtos.slice(
+          0,
+          10
+        );
+
+      if (estado) {
+        estado.ultimaLista = {
+          tipo:
+            "produtos_ambiguos",
+
+          categoriaIds: [],
+
+          produtosIds:
+            produtosExibidos.map(
+              (produto) =>
+                produto.id
+            ),
+
+          criadoEm:
+            Date.now(),
+        };
+      }
+
       return (
         "Encontrei algumas opções 👇\n\n" +
-        produtos
-          .slice(0, 10)
+        produtosExibidos
           .map(
             descreverProdutoCardapio
           )
@@ -5260,18 +5336,28 @@ function mensagemTemLinguagemCompra(
       texto
     );
 
+  if (!msg) {
+    return false;
+  }
+
   const marcadores = [
     "quero ",
     "queria ",
     "vou querer ",
     "me ve ",
-    "me vê ",
     "manda ",
     "coloca ",
     "adiciona ",
     "acrescenta ",
     "pode colocar ",
     "pode mandar ",
+    "pode ser ",
+    "vou ficar com ",
+    "fico com ",
+    "quero esse ",
+    "quero essa ",
+    "manda esse ",
+    "manda essa ",
     "pra mim ",
   ].map(
     normalizarTexto
@@ -5654,6 +5740,380 @@ Retorne SOMENTE o objeto JSON.
 // INTERPRETADOR PRINCIPAL
 // =====================================================
 
+// =====================================================
+// RESOLVER REFERÊNCIA DA ÚLTIMA LISTA
+// =====================================================
+//
+// Exemplos:
+//
+// "o de 20"
+// "2 do de 20"
+// "o segundo"
+// "o 2"
+// "carne com bacon"
+//
+// Só resolve quando existe UM candidato claro.
+// Se houver ambiguidade, deixa a IA continuar.
+// =====================================================
+
+function tentarResolverUltimaLista(
+  texto,
+  estado
+) {
+  if (
+    !estado ||
+    !estado.ultimaLista ||
+    !Array.isArray(
+      estado.ultimaLista.produtosIds
+    ) ||
+    estado.ultimaLista.produtosIds.length === 0
+  ) {
+    return null;
+  }
+
+  const msg =
+    normalizarTexto(
+      texto || ""
+    );
+
+  if (!msg) {
+    return null;
+  }
+
+  const produtos =
+    estado.ultimaLista.produtosIds
+      .map(
+        (produtoId) =>
+          obterProdutoPorId(
+            produtoId
+          )
+      )
+      .filter(Boolean);
+
+  if (
+    produtos.length === 0
+  ) {
+    return null;
+  }
+
+  let produtoEscolhido =
+    null;
+
+  let quantidade = 1;
+
+  // ---------------------------------------------------
+  // QUANTIDADE EXPLÍCITA NO COMEÇO
+  //
+  // "2 do de 20"
+  // "3 do segundo"
+  // ---------------------------------------------------
+
+  const matchQuantidade =
+    msg.match(
+      /^(\d+)\b/
+    );
+
+  if (matchQuantidade) {
+    const numero =
+      Number(
+        matchQuantidade[1]
+      );
+
+    if (
+      Number.isInteger(
+        numero
+      ) &&
+      numero > 0 &&
+      numero <= 99
+    ) {
+      quantidade =
+        numero;
+    }
+  }
+
+  // ---------------------------------------------------
+  // REFERÊNCIA POR PREÇO
+  //
+  // "o de 20"
+  // "2 do de 20"
+  // "o de 20,00"
+  // ---------------------------------------------------
+
+  const matchPreco =
+    msg.match(
+      /(?:de|por)\s+(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)\b/
+    );
+
+  if (matchPreco) {
+    const precoBuscado =
+      Number(
+        matchPreco[1]
+          .replace(
+            ",",
+            "."
+          )
+      );
+
+    if (
+      Number.isFinite(
+        precoBuscado
+      )
+    ) {
+      const candidatos =
+        produtos.filter(
+          (produto) => {
+            const preco =
+              numeroSeguro(
+                produto.preco
+              );
+
+            return (
+              preco !== null &&
+              Math.abs(
+                preco -
+                precoBuscado
+              ) <
+                TOLERANCIA_VALOR
+            );
+          }
+        );
+
+      if (
+        candidatos.length === 1
+      ) {
+        produtoEscolhido =
+          candidatos[0];
+      }
+    }
+  }
+
+  // ---------------------------------------------------
+  // REFERÊNCIA POR POSIÇÃO
+  //
+  // "o primeiro"
+  // "o segundo"
+  // "o terceiro"
+  // "o 2"
+  // ---------------------------------------------------
+
+  if (!produtoEscolhido) {
+    const posicoes = [
+      {
+        termos: [
+          "primeiro",
+          "primeira",
+        ],
+        indice: 0,
+      },
+      {
+        termos: [
+          "segundo",
+          "segunda",
+        ],
+        indice: 1,
+      },
+      {
+        termos: [
+          "terceiro",
+          "terceira",
+        ],
+        indice: 2,
+      },
+      {
+        termos: [
+          "quarto",
+          "quarta",
+        ],
+        indice: 3,
+      },
+      {
+        termos: [
+          "quinto",
+          "quinta",
+        ],
+        indice: 4,
+      },
+    ];
+
+    for (
+      const posicao of
+      posicoes
+    ) {
+      if (
+        posicao.termos.some(
+          (termo) =>
+            msg.includes(
+              termo
+            )
+        ) &&
+        produtos[
+          posicao.indice
+        ]
+      ) {
+        produtoEscolhido =
+          produtos[
+            posicao.indice
+          ];
+
+        break;
+      }
+    }
+  }
+
+  // ---------------------------------------------------
+  // POSIÇÃO NUMÉRICA
+  //
+  // "o 2"
+  // "numero 3"
+  // "opcao 1"
+  //
+  // Só aceitamos quando há palavra contextual,
+  // para não confundir quantidade com posição.
+  // ---------------------------------------------------
+
+  if (!produtoEscolhido) {
+    const matchPosicao =
+      msg.match(
+        /(?:^|\s)(?:o|a|numero|opcao)\s+(\d{1,2})(?:\s|$)/
+      );
+
+    if (matchPosicao) {
+      const indice =
+        Number(
+          matchPosicao[1]
+        ) - 1;
+
+      if (
+        indice >= 0 &&
+        indice <
+          produtos.length
+      ) {
+        produtoEscolhido =
+          produtos[indice];
+      }
+    }
+  }
+
+  // ---------------------------------------------------
+  // NOME / ALIAS EXATO DENTRO DA ÚLTIMA LISTA
+  // ---------------------------------------------------
+
+  if (!produtoEscolhido) {
+    const candidatos =
+      produtos.filter(
+        (produto) =>
+          aliasesProduto(
+            produto
+          ).some(
+            (alias) =>
+              alias === msg
+          )
+      );
+
+    if (
+      candidatos.length === 1
+    ) {
+      produtoEscolhido =
+        candidatos[0];
+    }
+  }
+
+  if (!produtoEscolhido) {
+    return null;
+  }
+
+  // ---------------------------------------------------
+  // DECIDIR SE É COMPRA OU CONSULTA
+  // ---------------------------------------------------
+  //
+  // Quantidade explícita em referência contextual:
+  // "2 do de 20"
+  // é tratada como escolha/compra.
+  //
+  // Linguagem explícita:
+  // "pode ser o de 20"
+  // também é compra.
+  // ---------------------------------------------------
+
+  const temQuantidadeExplicita =
+    Boolean(
+      matchQuantidade
+    );
+
+  const temLinguagemCompra =
+    mensagemTemLinguagemCompra(
+      texto
+    );
+
+  if (
+    temQuantidadeExplicita ||
+    temLinguagemCompra
+  ) {
+    return {
+      tipo: "acao",
+
+      acao: {
+        tipo:
+          "adicionar",
+
+        produtoId:
+          produtoEscolhido.id,
+
+        quantidade,
+      },
+
+      produto:
+        produtoEscolhido,
+    };
+  }
+
+  // ---------------------------------------------------
+  // REFERÊNCIA CURTA APÓS LISTA
+  //
+  // "o de 20"
+  // "o segundo"
+  // "carne com bacon"
+  //
+  // Nesse contexto, entendemos como seleção do item.
+  // ---------------------------------------------------
+
+  const ehReferenciaCurta =
+    msg.length <= 60;
+
+  if (ehReferenciaCurta) {
+    return {
+      tipo: "acao",
+
+      acao: {
+        tipo:
+          "adicionar",
+
+        produtoId:
+          produtoEscolhido.id,
+
+        quantidade: 1,
+      },
+
+      produto:
+        produtoEscolhido,
+    };
+  }
+
+  return {
+    tipo: "consulta",
+
+    consulta: {
+      tipo: "produto",
+
+      produtoId:
+        produtoEscolhido.id,
+    },
+
+    produto:
+      produtoEscolhido,
+  };
+}
+
 async function interpretarMensagem(
   telefone,
   texto,
@@ -5741,6 +6201,42 @@ async function interpretarMensagem(
         observacao:
           `pendencia_resolvida:${tentativa.tipo}`,
       };
+    }
+  }
+
+  // ---------------------------------------------------
+  // REFERÊNCIA À ÚLTIMA LISTA MOSTRADA
+  // ---------------------------------------------------
+
+  const referenciaUltimaLista =
+    tentarResolverUltimaLista(
+      texto,
+      estado
+    );
+
+  if (
+    referenciaUltimaLista
+  ) {
+    if (
+      referenciaUltimaLista.tipo ===
+      "acao"
+    ) {
+      resultadoVazio.acoes.push(
+        referenciaUltimaLista.acao
+      );
+
+      return resultadoVazio;
+    }
+
+    if (
+      referenciaUltimaLista.tipo ===
+      "consulta"
+    ) {
+      resultadoVazio.consultas.push(
+        referenciaUltimaLista.consulta
+      );
+
+      return resultadoVazio;
     }
   }
 
