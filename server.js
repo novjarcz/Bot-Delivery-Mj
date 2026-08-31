@@ -4688,21 +4688,37 @@ function validarAcoesIA(
       "definir quantidade",
     ]);
 
+  function normalizarComparacao(
+    valor
+  ) {
+    return normalizarTexto(
+      valor || ""
+    )
+      .replace(
+        /[^\p{L}\p{N}\s]/gu,
+        " "
+      )
+      .replace(
+        /\s+/g,
+        " "
+      )
+      .trim();
+  }
+
   const mensagem =
-    normalizarTexto(
+    normalizarComparacao(
       texto
     );
 
-  const validas =
-    [];
+  const validas = [];
 
   // ---------------------------------------------------
-  // Descobre quais aliases aparecem na mensagem
-  // e quantos produtos delivery compartilham cada alias.
+  // Mapa de aliases normalizados.
+  // Pontuação não pode diferenciar produto.
   //
-  // Exemplo:
-  // "coca" aparece em vários tamanhos.
-  // Portanto "coca" sozinho NÃO autoriza um SKU.
+  // "carne, bacon e queijo"
+  // =
+  // "carne bacon e queijo"
   // ---------------------------------------------------
 
   const mapaAliases =
@@ -4713,11 +4729,16 @@ function validarAcoesIA(
     produtosDelivery
   ) {
     for (
-      const alias of
+      const aliasOriginal of
       aliasesProduto(
         produto
       )
     ) {
+      const alias =
+        normalizarComparacao(
+          aliasOriginal
+        );
+
       if (!alias) {
         continue;
       }
@@ -4741,14 +4762,6 @@ function validarAcoesIA(
     }
   }
 
-  // ---------------------------------------------------
-  // Verifica se um produto está semanticamente
-  // autorizado pela mensagem original.
-  //
-  // A IA pode INTERPRETAR.
-  // Quem AUTORIZA o SKU é o backend.
-  // ---------------------------------------------------
-
   function produtoAutorizado(
     produto
   ) {
@@ -4759,31 +4772,41 @@ function validarAcoesIA(
       return false;
     }
 
+    const nomeProduto =
+      normalizarComparacao(
+        produto.nome
+      );
+
     const aliases =
-      aliasesProduto(
-        produto
-      )
-        .filter(Boolean)
+      [
+        ...new Set(
+          aliasesProduto(
+            produto
+          )
+            .map(
+              normalizarComparacao
+            )
+            .filter(Boolean)
+        ),
+      ]
         .sort(
           (a, b) =>
             b.length -
             a.length
         );
 
-    // -----------------------------------------------
-    // 1. Nome completo do produto na mensagem.
+    // -------------------------------------------------
+    // 1. Nome completo presente.
     //
-    // "carne de porco"
-    // autoriza Carne de Porco.
+    // Antes de autorizar, impede produto genérico
+    // quando um nome mais específico está na mensagem.
     //
-    // Mas "carne" NÃO autoriza Carne de Porco,
-    // porque o nome completo não apareceu.
-    // -----------------------------------------------
-
-    const nomeProduto =
-      normalizarTexto(
-        produto.nome
-      );
+    // Exemplo:
+    // mensagem = "quero carne de porco"
+    //
+    // Carne de Porco -> autorizado
+    // Carne          -> não autorizado por este bloco
+    // -------------------------------------------------
 
     if (
       nomeProduto &&
@@ -4791,15 +4814,54 @@ function validarAcoesIA(
         nomeProduto
       )
     ) {
-      return true;
+      const existeProdutoMaisEspecifico =
+        produtosDelivery.some(
+          (outroProduto) => {
+            if (
+              outroProduto.id ===
+              produto.id
+            ) {
+              return false;
+            }
+
+            const outroNome =
+              normalizarComparacao(
+                outroProduto.nome
+              );
+
+            if (
+              !outroNome ||
+              outroNome.length <=
+                nomeProduto.length
+            ) {
+              return false;
+            }
+
+            return (
+              outroNome.includes(
+                nomeProduto
+              ) &&
+              mensagem.includes(
+                outroNome
+              )
+            );
+          }
+        );
+
+      if (
+        !existeProdutoMaisEspecifico
+      ) {
+        return true;
+      }
     }
 
-    // -----------------------------------------------
-    // 2. Alias compartilhado não escolhe SKU sozinho.
+    // -------------------------------------------------
+    // 2. Alias único presente autoriza.
     //
-    // "coca" aparece em lata, 600ml, 1L e 2L.
-    // Precisamos de informação complementar.
-    // -----------------------------------------------
+    // Alias compartilhado sozinho NÃO escolhe SKU.
+    // Exemplo:
+    // "coca" não pode escolher lata/600ml/1L/2L.
+    // -------------------------------------------------
 
     for (
       const alias of
@@ -4823,21 +4885,58 @@ function validarAcoesIA(
         produtosDoAlias.size ===
           1
       ) {
-        return true;
+        const existeProdutoMaisEspecifico =
+          produtosDelivery.some(
+            (outroProduto) => {
+              if (
+                outroProduto.id ===
+                produto.id
+              ) {
+                return false;
+              }
+
+              const outroNome =
+                normalizarComparacao(
+                  outroProduto.nome
+                );
+
+              if (
+                !outroNome ||
+                outroNome.length <=
+                  alias.length
+              ) {
+                return false;
+              }
+
+              return (
+                outroNome.includes(
+                  alias
+                ) &&
+                mensagem.includes(
+                  outroNome
+                )
+              );
+            }
+          );
+
+        if (
+          !existeProdutoMaisEspecifico
+        ) {
+          return true;
+        }
       }
     }
 
-    // -----------------------------------------------
-    // 3. Caso especial de aliases compartilhados:
-    // usa informação específica do nome do produto.
+    // -------------------------------------------------
+    // 3. Alias compartilhado + informação específica.
     //
     // Exemplo:
-    // produto = Refrigerante 2L
-    // mensagem = "quero coca 2l"
+    // "coca" = compartilhado
+    // "2l"   = especificidade
     //
-    // "coca" é compartilhado,
-    // mas "2l" diferencia o SKU.
-    // -----------------------------------------------
+    // "quero coca 2l"
+    // autoriza Refrigerante 2L.
+    // -------------------------------------------------
 
     const palavrasNome =
       nomeProduto
@@ -4942,16 +5041,6 @@ function validarAcoesIA(
       continue;
     }
 
-    // -------------------------------------------------
-    // CONFIGURAR fica fora da trava semântica rígida.
-    //
-    // Respostas de configuração podem ser apenas:
-    // "mandioca", "coca-cola", "sem gás" etc.
-    //
-    // Pendências obrigatórias já são tratadas antes
-    // da IA no fluxo principal.
-    // -------------------------------------------------
-
     const exigeAutorizacao =
       tipo ===
         "adicionar" ||
@@ -5039,7 +5128,6 @@ function validarAcoesIA(
 
   return validas;
 }
-
 
 // =====================================================
 // VALIDAÇÃO DAS CONSULTAS DA IA
