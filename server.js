@@ -5995,11 +5995,29 @@ function tentarResolverUltimaLista(
   }
 
   // ---------------------------------------------------
-  // NOME / ALIAS EXATO DENTRO DA ÚLTIMA LISTA
+    // ---------------------------------------------------
+  // NOME / ALIAS DENTRO DA ÚLTIMA LISTA
+  // ---------------------------------------------------
+  //
+  // Primeiro tenta correspondência exata.
+  //
+  // Depois aceita correspondência parcial SOMENTE
+  // quando existir um único produto compatível.
+  //
+  // Exemplos:
+  //
+  // "1 de chocolate"
+  // → Chocolate Branco
+  //
+  // "1 de maracuja"
+  // → Maracujá Cremoso
+  //
+  // "1 de carne"
+  // → se houver várias carnes, NÃO escolhe.
   // ---------------------------------------------------
 
   if (!produtoEscolhido) {
-    const candidatos =
+    const candidatosExatos =
       produtos.filter(
         (produto) =>
           aliasesProduto(
@@ -6011,10 +6029,65 @@ function tentarResolverUltimaLista(
       );
 
     if (
-      candidatos.length === 1
+      candidatosExatos.length === 1
     ) {
       produtoEscolhido =
-        candidatos[0];
+        candidatosExatos[0];
+    }
+  }
+
+  // ---------------------------------------------------
+  // MATCH PARCIAL ÚNICO NO CONTEXTO
+  // ---------------------------------------------------
+
+  if (!produtoEscolhido) {
+    let termoContextual =
+      msg;
+
+    // Remove quantidade no começo:
+    // "1 de chocolate" → "de chocolate"
+    termoContextual =
+      termoContextual.replace(
+        /^\d+\s*/,
+        ""
+      );
+
+    // Remove conectores comuns:
+    // "de chocolate" → "chocolate"
+    termoContextual =
+      termoContextual.replace(
+        /^(?:do|da|de)\s+/,
+        ""
+      );
+
+    termoContextual =
+      termoContextual.trim();
+
+    if (
+      termoContextual.length >= 3
+    ) {
+      const candidatosParciais =
+        produtos.filter(
+          (produto) =>
+            aliasesProduto(
+              produto
+            ).some(
+              (alias) =>
+                alias.includes(
+                  termoContextual
+                ) ||
+                termoContextual.includes(
+                  alias
+                )
+            )
+        );
+
+      if (
+        candidatosParciais.length === 1
+      ) {
+        produtoEscolhido =
+          candidatosParciais[0];
+      }
     }
   }
 
@@ -6044,6 +6117,57 @@ function tentarResolverUltimaLista(
     mensagemTemLinguagemCompra(
       texto
     );
+
+  // ---------------------------------------------------
+  // CONSULTA CONTEXTUAL TEM PRIORIDADE SOBRE COMPRA
+  // ---------------------------------------------------
+  //
+  // "quanto custa o de 20?"
+  // "qual o preco do segundo?"
+  // "qual o valor do de 17?"
+  //
+  // Mesmo que exista quantidade na mensagem,
+  // uma pergunta explícita não pode virar compra.
+  // ---------------------------------------------------
+
+  const marcadoresConsultaContextual = [
+    "quanto custa",
+    "quanto e",
+    "qual o preco",
+    "qual preco",
+    "qual o valor",
+    "qual valor",
+    "preco do",
+    "preco da",
+    "valor do",
+    "valor da",
+  ].map(
+    normalizarTexto
+  );
+
+  const ehConsultaContextual =
+    marcadoresConsultaContextual.some(
+      (marcador) =>
+        msg.includes(
+          marcador
+        )
+    );
+
+  if (ehConsultaContextual) {
+    return {
+      tipo: "consulta",
+
+      consulta: {
+        tipo: "produto",
+
+        produtoId:
+          produtoEscolhido.id,
+      },
+
+      produto:
+        produtoEscolhido,
+    };
+  }
 
   if (
     temQuantidadeExplicita ||
