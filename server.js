@@ -3674,6 +3674,14 @@ function descreverProdutoCardapio(
     return "";
   }
 
+  const variacoes =
+    listarVariacoesProduto(
+      produto
+    );
+
+  const temVariacoes =
+    variacoes.length > 0;
+
   const preco =
     descricaoPrecoProduto(
       produto
@@ -3682,51 +3690,108 @@ function descreverProdutoCardapio(
   let linha =
     `• *${produto.nome}*`;
 
-  if (preco) {
+  // ---------------------------------------------------
+  // PREÇO SIMPLES
+  // ---------------------------------------------------
+  //
+  // Quando o produto possui variações,
+  // mostramos cada variação separadamente abaixo.
+  // Assim evitamos aquela faixa inútil tipo
+  // "R$ 23 a R$ 60" sem explicar o motivo.
+  // ---------------------------------------------------
+
+  if (
+    !temVariacoes &&
+    preco
+  ) {
     linha +=
       ` — ${preco}`;
   }
 
   // ---------------------------------------------------
-  // VITRINE DETALHADA
+  // DESCRIÇÃO
   // ---------------------------------------------------
-  //
-  // Algumas categorias precisam mostrar composição
-  // já na listagem.
-  //
-  // Isso evita perguntas óbvias e ajuda o produto
-  // a se vender sozinho.
-  // ---------------------------------------------------
-
-  const categoria =
-    obterCategoriaPorId(
-      produto.categoriaId
-    );
-
-  const categoriaNormalizada =
-    normalizarTexto(
-      nomeCategoria(
-        categoria
-      )
-    );
-
-  const categoriasDetalhadas = [
-    "jantinhas",
-    "trios",
-    "combos",
-  ];
-
-  const mostrarDescricao =
-    categoriasDetalhadas.includes(
-      categoriaNormalizada
-    );
 
   if (
-    mostrarDescricao &&
-    produto.descricao
+    typeof produto.descricao ===
+      "string" &&
+    produto.descricao.trim()
   ) {
     linha +=
-      `\n  ${produto.descricao}`;
+      `\n  ${produto.descricao.trim()}`;
+  }
+
+  // ---------------------------------------------------
+  // VARIAÇÕES
+  // ---------------------------------------------------
+  //
+  // Exemplo:
+  //
+  // Tulipa
+  //   250g — R$ 23,00
+  //   500g — R$ 35,00
+  //   1kg — R$ 60,00
+  // ---------------------------------------------------
+
+  if (temVariacoes) {
+    for (
+      const variacao of
+      variacoes
+    ) {
+      const nomeVariacao =
+        String(
+          variacao?.nome || ""
+        ).trim();
+
+      const precoVariacao =
+        numeroSeguro(
+          variacao?.preco
+        );
+
+      if (
+        !nomeVariacao ||
+        precoVariacao === null
+      ) {
+        continue;
+      }
+
+      linha +=
+        `\n  • ${nomeVariacao} — ${formatarReal(precoVariacao)}`;
+    }
+  }
+
+  // ---------------------------------------------------
+  // COMPOSIÇÃO
+  // ---------------------------------------------------
+  //
+  // Usado principalmente em combos.
+  // ---------------------------------------------------
+
+  if (
+    Array.isArray(
+      produto.composicao
+    ) &&
+    produto.composicao.length > 0
+  ) {
+    linha +=
+      `\n  Inclui:`;
+
+    for (
+      const item of
+      produto.composicao
+    ) {
+      const textoItem =
+        String(
+          item || ""
+        ).trim();
+
+      if (!textoItem) {
+        continue;
+      }
+
+      linha +=
+        `\n  • ${textoItem}`;
+    }
   }
 
   return linha;
