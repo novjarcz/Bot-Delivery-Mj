@@ -5534,6 +5534,36 @@ Uma mensagem pode gerar VÁRIAS ações
 E
 VÁRIAS consultas simultaneamente.
 
+REGRA DE PRODUTO EXATO:
+
+Se o cliente demonstrar intenção clara de compra
+E mencionar o nome ou alias de um produto específico existente no cardápio,
+trate como ação de adicionar esse produto.
+
+Um produto específico deve vencer uma interpretação genérica de categoria
+quando o texto identifica claramente esse produto.
+
+Exemplos:
+
+"quero carne"
+= adicionar o produto Carne.
+
+"quero 2 carnes"
+= adicionar 2 unidades do produto Carne.
+
+"quero carne de porco"
+= adicionar o produto Carne de Porco.
+
+"quero carne com bacon"
+= adicionar o produto Carne com Bacon.
+
+"quero medalhão de carne bacon e queijo"
+= adicionar Medalhão de Carne, Bacon e Queijo.
+
+IMPORTANTE:
+Essa regra NÃO autoriza escolher um produto quando o cliente informou
+somente uma categoria genérica ou quando existem várias opções possíveis.
+
 NÃO escolha produto específico quando o cliente mencionar apenas uma categoria.
 
 Exemplo:
