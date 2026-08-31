@@ -1048,9 +1048,42 @@ function ehPerguntaCardapio(
   texto
 ) {
   const msg =
-    normalizarTexto(texto);
+    normalizarTexto(texto)
+      .replace(/[?!.,;:]+/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
 
-  const frases = [
+  if (!msg) {
+    return false;
+  }
+
+  // Pedidos explícitos de cardápio geral.
+  const frasesCardapio = [
+    "cardapio",
+    "menu",
+    "me mostra o cardapio",
+    "mostra o cardapio",
+    "me mostre o cardapio",
+    "me manda o cardapio",
+    "manda o cardapio",
+    "ver cardapio",
+    "quero ver o cardapio",
+    "quero o cardapio",
+  ];
+
+  if (
+    frasesCardapio.includes(msg)
+  ) {
+    return true;
+  }
+
+  // Perguntas realmente genéricas.
+  // Aqui NÃO usamos includes de propósito.
+  //
+  // "o que voces tem"     -> cardápio geral
+  // "o que tem no trio 3" -> NÃO
+  // "o que tem de bebidas"-> NÃO
+  const perguntasGerais = [
     "o que tem",
     "o que voce tem",
     "o que voces tem",
@@ -1058,16 +1091,13 @@ function ehPerguntaCardapio(
     "o que tem hoje",
     "quais opcoes",
     "quais as opcoes",
-    "me manda o cardapio",
-    "manda o cardapio",
-    "ver cardapio",
-    "cardapio",
+    "quais sao as opcoes",
+    "o que vende",
+    "o que voces vendem",
   ];
 
-  return frases.some(
-    (frase) =>
-      msg === frase ||
-      msg.includes(frase)
+  return perguntasGerais.includes(
+    msg
   );
 }
 
@@ -4638,7 +4668,8 @@ function normalizarInterpretacao(
 // =====================================================
 
 function validarAcoesIA(
-  acoes
+  acoes,
+  texto = ""
 ) {
   if (
     !Array.isArray(
@@ -4657,8 +4688,220 @@ function validarAcoesIA(
       "definir quantidade",
     ]);
 
+  const mensagem =
+    normalizarTexto(
+      texto
+    );
+
   const validas =
     [];
+
+  // ---------------------------------------------------
+  // Descobre quais aliases aparecem na mensagem
+  // e quantos produtos delivery compartilham cada alias.
+  //
+  // Exemplo:
+  // "coca" aparece em vários tamanhos.
+  // Portanto "coca" sozinho NÃO autoriza um SKU.
+  // ---------------------------------------------------
+
+  const mapaAliases =
+    new Map();
+
+  for (
+    const produto of
+    produtosDelivery
+  ) {
+    for (
+      const alias of
+      aliasesProduto(
+        produto
+      )
+    ) {
+      if (!alias) {
+        continue;
+      }
+
+      if (
+        !mapaAliases.has(
+          alias
+        )
+      ) {
+        mapaAliases.set(
+          alias,
+          new Set()
+        );
+      }
+
+      mapaAliases
+        .get(alias)
+        .add(
+          produto.id
+        );
+    }
+  }
+
+  // ---------------------------------------------------
+  // Verifica se um produto está semanticamente
+  // autorizado pela mensagem original.
+  //
+  // A IA pode INTERPRETAR.
+  // Quem AUTORIZA o SKU é o backend.
+  // ---------------------------------------------------
+
+  function produtoAutorizado(
+    produto
+  ) {
+    if (
+      !produto ||
+      !mensagem
+    ) {
+      return false;
+    }
+
+    const aliases =
+      aliasesProduto(
+        produto
+      )
+        .filter(Boolean)
+        .sort(
+          (a, b) =>
+            b.length -
+            a.length
+        );
+
+    // -----------------------------------------------
+    // 1. Nome completo do produto na mensagem.
+    //
+    // "carne de porco"
+    // autoriza Carne de Porco.
+    //
+    // Mas "carne" NÃO autoriza Carne de Porco,
+    // porque o nome completo não apareceu.
+    // -----------------------------------------------
+
+    const nomeProduto =
+      normalizarTexto(
+        produto.nome
+      );
+
+    if (
+      nomeProduto &&
+      mensagem.includes(
+        nomeProduto
+      )
+    ) {
+      return true;
+    }
+
+    // -----------------------------------------------
+    // 2. Alias compartilhado não escolhe SKU sozinho.
+    //
+    // "coca" aparece em lata, 600ml, 1L e 2L.
+    // Precisamos de informação complementar.
+    // -----------------------------------------------
+
+    for (
+      const alias of
+      aliases
+    ) {
+      if (
+        !mensagem.includes(
+          alias
+        )
+      ) {
+        continue;
+      }
+
+      const produtosDoAlias =
+        mapaAliases.get(
+          alias
+        );
+
+      if (
+        produtosDoAlias &&
+        produtosDoAlias.size ===
+          1
+      ) {
+        return true;
+      }
+    }
+
+    // -----------------------------------------------
+    // 3. Caso especial de aliases compartilhados:
+    // usa informação específica do nome do produto.
+    //
+    // Exemplo:
+    // produto = Refrigerante 2L
+    // mensagem = "quero coca 2l"
+    //
+    // "coca" é compartilhado,
+    // mas "2l" diferencia o SKU.
+    // -----------------------------------------------
+
+    const palavrasNome =
+      nomeProduto
+        .split(" ")
+        .filter(
+          (parte) =>
+            parte.length >= 2
+        );
+
+    const temAliasCompartilhado =
+      aliases.some(
+        (alias) => {
+          if (
+            !mensagem.includes(
+              alias
+            )
+          ) {
+            return false;
+          }
+
+          const produtosDoAlias =
+            mapaAliases.get(
+              alias
+            );
+
+          return (
+            produtosDoAlias &&
+            produtosDoAlias.size >
+              1
+          );
+        }
+      );
+
+    if (
+      temAliasCompartilhado
+    ) {
+      const partesEspecificas =
+        palavrasNome.filter(
+          (parte) =>
+            ![
+              "refrigerante",
+              "refri",
+            ].includes(
+              parte
+            )
+        );
+
+      const temEspecificidade =
+        partesEspecificas.some(
+          (parte) =>
+            mensagem.includes(
+              parte
+            )
+        );
+
+      if (
+        temEspecificidade
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
 
   for (
     const acao of
@@ -4694,6 +4937,47 @@ function validarAcoesIA(
       console.warn(
         "⚠️ IA tentou usar produto inválido:",
         acao.produtoId
+      );
+
+      continue;
+    }
+
+    // -------------------------------------------------
+    // CONFIGURAR fica fora da trava semântica rígida.
+    //
+    // Respostas de configuração podem ser apenas:
+    // "mandioca", "coca-cola", "sem gás" etc.
+    //
+    // Pendências obrigatórias já são tratadas antes
+    // da IA no fluxo principal.
+    // -------------------------------------------------
+
+    const exigeAutorizacao =
+      tipo ===
+        "adicionar" ||
+      tipo ===
+        "remover" ||
+      tipo ===
+        "definir_quantidade" ||
+      tipo ===
+        "definir quantidade";
+
+    if (
+      exigeAutorizacao &&
+      !produtoAutorizado(
+        produto
+      )
+    ) {
+      console.warn(
+        "🛡️ Ação da IA bloqueada por falta de autorização semântica:",
+        {
+          tipo,
+          produtoId:
+            produto.id,
+          produto:
+            produto.nome,
+          texto,
+        }
       );
 
       continue;
@@ -5417,9 +5701,10 @@ async function interpretarMensagem(
       );
 
     normalizado.acoes =
-      validarAcoesIA(
-        normalizado.acoes
-      );
+  validarAcoesIA(
+    normalizado.acoes,
+    texto
+  );
 
     normalizado.consultas =
       validarConsultasIA(
