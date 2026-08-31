@@ -3687,6 +3687,48 @@ function descreverProdutoCardapio(
       ` — ${preco}`;
   }
 
+  // ---------------------------------------------------
+  // VITRINE DETALHADA
+  // ---------------------------------------------------
+  //
+  // Algumas categorias precisam mostrar composição
+  // já na listagem.
+  //
+  // Isso evita perguntas óbvias e ajuda o produto
+  // a se vender sozinho.
+  // ---------------------------------------------------
+
+  const categoria =
+    obterCategoriaPorId(
+      produto.categoriaId
+    );
+
+  const categoriaNormalizada =
+    normalizarTexto(
+      nomeCategoria(
+        categoria
+      )
+    );
+
+  const categoriasDetalhadas = [
+    "jantinhas",
+    "trios",
+    "combos",
+  ];
+
+  const mostrarDescricao =
+    categoriasDetalhadas.includes(
+      categoriaNormalizada
+    );
+
+  if (
+    mostrarDescricao &&
+    produto.descricao
+  ) {
+    linha +=
+      `\n  ${produto.descricao}`;
+  }
+
   return linha;
 }
 
@@ -6119,18 +6161,26 @@ function tentarResolverUltimaLista(
     );
 
   // ---------------------------------------------------
+    // ---------------------------------------------------
   // CONSULTA CONTEXTUAL TEM PRIORIDADE SOBRE COMPRA
   // ---------------------------------------------------
   //
+  // Identificar um produto NÃO significa que o cliente
+  // necessariamente quer comprar esse produto.
+  //
+  // Exemplos de consulta:
+  //
   // "quanto custa o de 20?"
   // "qual o preco do segundo?"
-  // "qual o valor do de 17?"
+  // "o que vem na jantinha 1?"
+  // "o que acompanha a jantinha 2?"
   //
-  // Mesmo que exista quantidade na mensagem,
-  // uma pergunta explícita não pode virar compra.
+  // Essas mensagens devem CONSULTAR o produto,
+  // nunca adicionar automaticamente ao carrinho.
   // ---------------------------------------------------
 
   const marcadoresConsultaContextual = [
+    // Preço / valor
     "quanto custa",
     "quanto e",
     "qual o preco",
@@ -6141,6 +6191,18 @@ function tentarResolverUltimaLista(
     "preco da",
     "valor do",
     "valor da",
+
+    // Composição
+    "o que vem",
+    "vem o que",
+    "que vem",
+    "o que acompanha",
+    "que acompanha",
+    "quais acompanhamentos",
+    "qual acompanhamento",
+    "tem o que",
+    "o que tem",
+    "como e",
   ].map(
     normalizarTexto
   );
