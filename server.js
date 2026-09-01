@@ -8720,31 +8720,260 @@ function tratarValorTrocoDireto(
 
 
 // =====================================================
-// TIPO DE ENTREGA DIRETO
+// PAGAMENTO DIRETO
 // =====================================================
 
-function tratarTipoEntregaDireto(
+function metodosPagamentoNoTexto(
+  texto
+) {
+  const msg =
+    normalizarTexto(
+      texto || ""
+    );
+
+  const metodos = [];
+
+  if (
+    msg.includes("dinheiro") ||
+    msg.includes("especie")
+  ) {
+    metodos.push("dinheiro");
+  }
+
+  if (
+    msg.includes("pix")
+  ) {
+    metodos.push("pix");
+  }
+
+  if (
+    msg.includes("credito")
+  ) {
+    metodos.push(
+      "cartao_credito"
+    );
+  } else if (
+    msg.includes("debito")
+  ) {
+    metodos.push(
+      "cartao_debito"
+    );
+  } else if (
+    msg.includes("cartao")
+  ) {
+    metodos.push(
+      "cartao"
+    );
+  }
+
+  return [
+    ...new Set(
+      metodos
+    ),
+  ];
+}
+
+
+function tentarPagamentoMistoDireto(
   estado,
   texto
 ) {
   if (
     estado.aguardando !==
-      "tipo_entrega"
+      "pagamento" &&
+    estado.aguardando !==
+      "pagamento_misto"
   ) {
     return false;
   }
 
-  const tipo =
-    normalizarTipoEntrega(
-      texto
+  const msg =
+    normalizarTexto(
+      texto || ""
     );
 
-  if (!tipo) {
+  const metodos =
+    metodosPagamentoNoTexto(
+      msg
+    );
+
+  if (
+    metodos.length < 2
+  ) {
     return false;
   }
 
-  estado.entrega.tipo =
-    tipo;
+  const totalPedido =
+    calcularTotalPedido(
+      estado
+    );
+
+  const divisoes = [];
+
+  for (
+    const metodo of metodos
+  ) {
+    let termos = [];
+
+    if (
+      metodo === "dinheiro"
+    ) {
+      termos = [
+        "dinheiro",
+        "especie",
+      ];
+    } else if (
+      metodo === "pix"
+    ) {
+      termos = [
+        "pix",
+      ];
+    } else if (
+      metodo ===
+      "cartao_credito"
+    ) {
+      termos = [
+        "credito",
+        "cartao de credito",
+      ];
+    } else if (
+      metodo ===
+      "cartao_debito"
+    ) {
+      termos = [
+        "debito",
+        "cartao de debito",
+      ];
+    } else if (
+      metodo === "cartao"
+    ) {
+      termos = [
+        "cartao",
+      ];
+    }
+
+    let valor = null;
+
+    for (
+      const termo of termos
+    ) {
+      const escapado =
+        termo.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&"
+        );
+
+      const antes =
+        msg.match(
+          new RegExp(
+            `(\\d+(?:[.,]\\d{1,2})?)\\s*(?:reais?\\s*)?(?:no|na|em)?\\s*${escapado}\\b`
+          )
+        );
+
+      if (antes) {
+        valor =
+          numeroSeguro(
+            antes[1]
+          );
+
+        break;
+      }
+
+      const depois =
+        msg.match(
+          new RegExp(
+            `\\b${escapado}\\s*(?:de|com|em)?\\s*(?:r\\$\\s*)?(\\d+(?:[.,]\\d{1,2})?)\\b`
+          )
+        );
+
+      if (depois) {
+        valor =
+          numeroSeguro(
+            depois[1]
+          );
+
+        break;
+      }
+    }
+
+    if (
+      valor !== null &&
+      valor > 0
+    ) {
+      divisoes.push({
+        metodo,
+        valor,
+      });
+    }
+  }
+
+  const metodosSemValor =
+    metodos.filter(
+      (metodo) =>
+        !divisoes.some(
+          (divisao) =>
+            divisao.metodo ===
+            metodo
+        )
+    );
+
+  const mencionaRestante =
+    msg.includes(
+      "restante"
+    ) ||
+    msg.includes(
+      "resto"
+    );
+
+  if (
+    mencionaRestante &&
+    divisoes.length === 1 &&
+    metodosSemValor.length === 1
+  ) {
+    const restante =
+      Number(
+        (
+          totalPedido -
+          divisoes[0].valor
+        ).toFixed(2)
+      );
+
+    if (
+      restante <= 0
+    ) {
+      return false;
+    }
+
+    divisoes.push({
+      metodo:
+        metodosSemValor[0],
+      valor:
+        restante,
+    });
+  }
+
+  if (
+    divisoes.length < 2
+  ) {
+    estado.pagamento.metodo =
+      "misto";
+
+    estado.pagamento.divisoes =
+      divisoes;
+
+    estado.aguardando =
+      "pagamento_misto";
+
+    return true;
+  }
+
+  atualizarPagamento(
+    estado,
+    {
+      metodo: "misto",
+      divisoes,
+    }
+  );
 
   estado.aguardando =
     null;
@@ -8753,17 +8982,31 @@ function tratarTipoEntregaDireto(
 }
 
 
-// =====================================================
-// PAGAMENTO DIRETO
-// =====================================================
-
 function tratarPagamentoDireto(
   estado,
   texto
 ) {
   if (
     estado.aguardando !==
-      "pagamento"
+      "pagamento" &&
+    estado.aguardando !==
+      "pagamento_misto"
+  ) {
+    return false;
+  }
+
+  if (
+    tentarPagamentoMistoDireto(
+      estado,
+      texto
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    estado.aguardando ===
+      "pagamento_misto"
   ) {
     return false;
   }
@@ -9628,9 +9871,11 @@ async function processarMensagem(
   // ---------------------------------------------------
 
   if (
-    estado.aguardando ===
-    "pagamento"
-  ) {
+  estado.aguardando ===
+    "pagamento" ||
+  estado.aguardando ===
+    "pagamento_misto"
+) {
     const tratado =
       tratarPagamentoDireto(
         estado,
