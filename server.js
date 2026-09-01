@@ -5697,6 +5697,45 @@ NÃO complete informação que o cliente não informou.
 
 Retorne SOMENTE JSON válido.
 
+REGRA DE DADOS DE ENTREGA:
+
+Quando o cliente informar dados de entrega,
+extraia TODOS os campos claramente identificáveis na mensagem.
+
+Uma única mensagem pode preencher vários campos de entrega ao mesmo tempo.
+
+Exemplo:
+
+"Rua Cacique 400 Floresta"
+
+entrega.endereco = "Rua Cacique"
+entrega.numero = "400"
+entrega.bairro = "Floresta"
+
+Exemplo:
+
+"Rua Cacique, 400, bairro Floresta, casa dos fundos"
+
+entrega.endereco = "Rua Cacique"
+entrega.numero = "400"
+entrega.bairro = "Floresta"
+entrega.complemento = "casa dos fundos"
+
+Exemplo:
+
+"Rua 7 de Setembro, 400, Centro"
+
+entrega.endereco = "Rua 7 de Setembro"
+entrega.numero = "400"
+entrega.bairro = "Centro"
+
+IMPORTANTE:
+
+NÃO descarte dados de entrega que o cliente informou.
+NÃO invente rua, número, bairro, complemento, referência ou cidade.
+Se algum campo não estiver claramente informado, deixe esse campo como null.
+
+
 REGRA MAIS IMPORTANTE:
 
 CONSULTAR NÃO É COMPRAR.
@@ -9490,6 +9529,17 @@ function tratarCampoEntregaDireto(
     estado.aguardando ===
     "endereco"
   ) {
+    const pareceEnderecoComposto =
+      /\b\d{1,6}[a-zA-Z]?\b[\s,;-]+\S+/u.test(
+        valor
+      );
+
+    if (
+      pareceEnderecoComposto
+    ) {
+      return false;
+    }
+
     estado.entrega.endereco =
       valor;
 
