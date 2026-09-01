@@ -8981,6 +8981,38 @@ function tentarPagamentoMistoDireto(
   return true;
 }
 
+// =====================================================
+// TIPO DE ENTREGA DIRETO
+// =====================================================
+
+function tratarTipoEntregaDireto(
+  estado,
+  texto
+) {
+  if (
+    estado.aguardando !==
+      "tipo_entrega"
+  ) {
+    return false;
+  }
+
+  const tipo =
+    normalizarTipoEntrega(
+      texto
+    );
+
+  if (!tipo) {
+    return false;
+  }
+
+  estado.entrega.tipo =
+    tipo;
+
+  estado.aguardando =
+    null;
+
+  return true;
+}
 
 function tratarPagamentoDireto(
   estado,
