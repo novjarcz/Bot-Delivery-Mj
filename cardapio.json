@@ -373,79 +373,182 @@
       "id": "bebidas",
       "nome": "Bebidas",
       "produtos": [
-        { "id": "skol_600", "nome": "Skol 600ml", "preco": 12.00, "disponivel": true, "imagem": null },
-        { "id": "original_600", "nome": "Original 600ml", "preco": 15.00, "disponivel": true, "imagem": null },
-        { "id": "antartica_600", "nome": "Antárctica Pinguim 600ml", "preco": 12.00, "disponivel": true, "imagem": null },
-        { "id": "heineken_600", "nome": "Heineken 600ml", "preco": 17.00, "disponivel": true, "imagem": null },
-        { "id": "heineken_330", "nome": "Heineken 330ml", "preco": 10.00, "disponivel": true, "imagem": null },
-        { "id": "conti_600", "nome": "Conti 600ml", "preco": 10.00, "disponivel": true, "imagem": null },
-        { "id": "amstel_lata", "nome": "Amstel Lata", "preco": 5.00, "disponivel": true, "imagem": null },
-        { "id": "conti_lata", "nome": "Conti Lata", "preco": 5.00, "disponivel": true, "imagem": null },
-        { "id": "skol_lata", "nome": "Skol Lata", "preco": 5.00, "disponivel": true, "imagem": null },
-        { "id": "antartica_lata", "nome": "Antárctica Pinguim Lata", "preco": 5.00, "disponivel": true, "imagem": null },
-        { "id": "brahma_lata", "nome": "Brahma Lata", "preco": 5.00, "disponivel": true, "imagem": null },
-
         {
-  "id": "refrigerante_lata",
-  "nome": "Refrigerante Lata",
-  "preco": 6.00,
-  "disponivel": true,
-  "opcoes": ["Coca-Cola", "Guaraná", "Fanta", "Sprite"],
-  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana", "fanta", "sprite"],
-  "imagem": null
-},
-{
-  "id": "refrigerante_600",
-  "nome": "Refrigerante 600ml",
-  "preco": 9.00,
-  "disponivel": true,
-  "opcoes": ["Coca-Cola", "Guaraná"],
-  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana"],
-  "imagem": null
-},
-{
-  "id": "refrigerante_1l",
-  "nome": "Refrigerante 1L",
-  "preco": 10.00,
-  "disponivel": true,
-  "opcoes": ["Coca-Cola", "Guaraná"],
-  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana"],
-  "imagem": null
-},
-{
-  "id": "refrigerante_2l_delivery",
-  "nome": "Refrigerante 2L",
-  "contexto": "delivery",
-  "preco": 15.00,
-  "disponivel": true,
-  "opcoes": ["Coca-Cola", "Guaraná"],
-  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana"],
-  "imagem": null
-},
-{
-  "id": "refrigerante_2l_mesa",
-  "nome": "Refrigerante 2L",
-  "contexto": "mesa",
-  "preco": 16.00,
-  "disponivel": true,
-  "opcoes": ["Coca-Cola", "Guaraná"],
-  "aliases": ["refri", "refrigerante", "coca", "coca cola", "guarana"],
-  "imagem": null
-},
-
-        { "id": "coca_ks_290", "nome": "Coca-Cola KS 290ml", "preco": 6.00, "disponivel": true, "imagem": null },
-        { "id": "agua_tonica", "nome": "Água Tônica", "preco": 7.00, "disponivel": true, "imagem": null },
-        { "id": "agua", "nome": "Água com ou sem Gás", "preco": 4.00, "disponivel": true, "opcoes": ["Com gás", "Sem gás"], "imagem": null },
-        { "id": "agua_saborizada", "nome": "Água Saborizada", "preco": 7.00, "disponivel": true, "imagem": null },
-        { "id": "del_valle_lata", "nome": "Suco Del Valle Lata", "preco": 7.00, "disponivel": true, "imagem": null },
-        { "id": "suco_kapo", "nome": "Suco Kapo", "preco": 5.00, "disponivel": true, "imagem": null },
-        { "id": "laranja_jarra", "nome": "Suco de Laranja Jarra", "preco": 20.00, "disponivel": true, "imagem": null },
-        { "id": "laranja_copo", "nome": "Suco de Laranja Copo", "preco": 12.00, "disponivel": true, "imagem": null },
-        { "id": "laranja_jarra_grande", "nome": "Suco de Laranja Jarra Grande", "preco": 35.00, "disponivel": true, "imagem": null },
-        { "id": "energetico_lata", "nome": "Energético Lata", "preco": 12.00, "disponivel": true, "imagem": null },
-        { "id": "energetico_2l", "nome": "Energético 2L", "preco": 15.00, "disponivel": true, "imagem": null },
-        { "id": "caipirinha_velho_barreiro", "nome": "Caipirinha Velho Barreiro", "preco": 15.00, "disponivel": true, "imagem": null },
-        { "id": "caipirinha_vodka", "nome": "Caipirinha Vodka", "preco": 15.00, "disponivel": true, "imagem": null }
+          "id": "refrigerante_lata",
+          "nome": "Refrigerante Lata",
+          "preco": 6.00,
+          "disponivel": true,
+          "opcoes": [
+            "Coca-Cola",
+            "Coca-Cola Zero",
+            "Guaraná",
+            "Fanta Laranja",
+            "Fanta Uva",
+            "Sprite",
+            "Sprite Zero"
+          ],
+          "aliases": [
+            "refri lata",
+            "refrigerante lata",
+            "coca lata",
+            "coca zero lata",
+            "guarana lata",
+            "fanta lata",
+            "fanta laranja lata",
+            "fanta uva lata",
+            "sprite lata",
+            "sprite zero lata"
+          ],
+          "imagem": null
+        },
+        {
+          "id": "refrigerante_600",
+          "nome": "Refrigerante 600ml",
+          "preco": 9.00,
+          "disponivel": true,
+          "opcoes": [
+            "Coca-Cola",
+            "Fanta Laranja",
+            "Guaraná"
+          ],
+          "aliases": [
+            "refri 600",
+            "refri 600ml",
+            "refrigerante 600",
+            "refrigerante 600ml",
+            "coca 600",
+            "coca 600ml",
+            "coca cola 600",
+            "fanta 600",
+            "fanta laranja 600",
+            "guarana 600"
+          ],
+          "imagem": null
+        },
+        {
+          "id": "refrigerante_1l",
+          "nome": "Refrigerante 1L",
+          "preco": 10.00,
+          "disponivel": true,
+          "opcoes": [
+            "Coca-Cola"
+          ],
+          "aliases": [
+            "refri 1l",
+            "refrigerante 1l",
+            "coca 1l",
+            "coca cola 1l"
+          ],
+          "imagem": null
+        },
+        {
+          "id": "refrigerante_2l_delivery",
+          "nome": "Refrigerante 2L",
+          "contexto": "delivery",
+          "preco": 15.00,
+          "disponivel": true,
+          "opcoes": [
+            "Coca-Cola",
+            "Coca-Cola Zero",
+            "Fanta Laranja",
+            "Guaraná",
+            "Sprite"
+          ],
+          "aliases": [
+            "refri 2l",
+            "refrigerante 2l",
+            "coca 2l",
+            "coca cola 2l",
+            "coca zero 2l",
+            "coca cola zero 2l",
+            "fanta 2l",
+            "fanta laranja 2l",
+            "guarana 2l",
+            "sprite 2l"
+          ],
+          "imagem": null
+        },
+        {
+          "id": "coca_ks_290",
+          "nome": "Coca-Cola KS 290ml",
+          "preco": 6.00,
+          "disponivel": true,
+          "imagem": null
+        },
+        {
+          "id": "agua_tonica",
+          "nome": "Água Tônica",
+          "preco": 7.00,
+          "disponivel": true,
+          "aliases": [
+            "tonica",
+            "agua tonica"
+          ],
+          "imagem": null
+        },
+        {
+          "id": "agua",
+          "nome": "Água com ou sem Gás",
+          "preco": 4.00,
+          "disponivel": true,
+          "opcoes": [
+            "Com gás",
+            "Sem gás"
+          ],
+          "aliases": [
+            "agua",
+            "agua com gas",
+            "agua sem gas"
+          ],
+          "imagem": null
+        },
+        {
+          "id": "agua_saborizada",
+          "nome": "Água Saborizada",
+          "preco": 7.00,
+          "disponivel": true,
+          "imagem": null
+        },
+        {
+          "id": "del_valle_lata",
+          "nome": "Suco Del Valle Lata",
+          "preco": 7.00,
+          "disponivel": true,
+          "opcoes": [
+            "Uva",
+            "Pêssego"
+          ],
+          "aliases": [
+            "del valle",
+            "suco del valle",
+            "del valle lata",
+            "suco del valle lata",
+            "del valle uva",
+            "del valle pessego"
+          ],
+          "imagem": null
+        },
+        {
+          "id": "energetico_lata",
+          "nome": "Energético Lata",
+          "preco": 12.00,
+          "disponivel": true,
+          "aliases": [
+            "energetico",
+            "energetico lata",
+            "red bull",
+            "redbull"
+          ],
+          "imagem": null
+        },
+        {
+          "id": "energetico_2l",
+          "nome": "Energético 2L",
+          "preco": 15.00,
+          "disponivel": true,
+          "imagem": null
+        }
+        
       ]
     }
   ]

@@ -3693,12 +3693,6 @@ function descreverProdutoCardapio(
   // ---------------------------------------------------
   // PREÇO SIMPLES
   // ---------------------------------------------------
-  //
-  // Quando o produto possui variações,
-  // mostramos cada variação separadamente abaixo.
-  // Assim evitamos aquela faixa inútil tipo
-  // "R$ 23 a R$ 60" sem explicar o motivo.
-  // ---------------------------------------------------
 
   if (
     !temVariacoes &&
@@ -3722,15 +3716,42 @@ function descreverProdutoCardapio(
   }
 
   // ---------------------------------------------------
-  // VARIAÇÕES
+  // OPÇÕES
   // ---------------------------------------------------
   //
   // Exemplo:
   //
-  // Tulipa
-  //   250g — R$ 23,00
-  //   500g — R$ 35,00
-  //   1kg — R$ 60,00
+  // Refrigerante Lata — R$ 6,00
+  //   Opções: Coca-Cola • Guaraná • Fanta
+  //
+  // Serve também para água, sucos e qualquer
+  // produto futuro que possua "opcoes".
+  // ---------------------------------------------------
+
+  if (
+    Array.isArray(
+      produto.opcoes
+    ) &&
+    produto.opcoes.length > 0
+  ) {
+    const opcoes =
+      produto.opcoes
+        .map(
+          opcao =>
+            String(
+              opcao || ""
+            ).trim()
+        )
+        .filter(Boolean);
+
+    if (opcoes.length > 0) {
+      linha +=
+        `\n  Opções: ${opcoes.join(" • ")}`;
+    }
+  }
+
+  // ---------------------------------------------------
+  // VARIAÇÕES
   // ---------------------------------------------------
 
   if (temVariacoes) {
@@ -3762,9 +3783,6 @@ function descreverProdutoCardapio(
 
   // ---------------------------------------------------
   // COMPOSIÇÃO
-  // ---------------------------------------------------
-  //
-  // Usado principalmente em combos.
   // ---------------------------------------------------
 
   if (
