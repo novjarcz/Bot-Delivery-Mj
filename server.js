@@ -4894,7 +4894,7 @@ function validarAcoesIA(
       "definir quantidade",
     ]);
 
-  function normalizarComparacao(
+   function normalizarComparacao(
     valor
   ) {
     return normalizarTexto(
@@ -4903,6 +4903,22 @@ function validarAcoesIA(
       .replace(
         /[^\p{L}\p{N}\s]/gu,
         " "
+      )
+      .replace(
+        /\b(\d+)\s*(?:litros?|lts?|l)\b/g,
+        "$1l"
+      )
+      .replace(
+        /\b(\d+)\s*(?:mililitros?|ml)\b/g,
+        "$1ml"
+      )
+      .replace(
+        /\b(\d+)\s*(?:quilos?|quilogramas?|kgs?|kg)\b/g,
+        "$1kg"
+      )
+      .replace(
+        /\b(\d+)\s*(?:gramas?|grs?|g)\b/g,
+        "$1g"
       )
       .replace(
         /\s+/g,
