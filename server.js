@@ -236,14 +236,19 @@ function ehSaudacaoPura(
   texto
 ) {
   const mensagem =
-    normalizarTexto(texto);
+    normalizarTexto(texto)
+      .replace(/[!?.,]+$/g, "")
+      .trim();
+
+  if (
+    /^oi+$/.test(mensagem) ||
+    /^op+a+$/.test(mensagem)
+  ) {
+    return true;
+  }
 
   return [
-    "oi",
-    "oii",
-    "oiii",
     "ola",
-    "opa",
     "eai",
     "e ai",
     "fala",
@@ -9456,13 +9461,13 @@ async function enviarResposta(
 // =====================================================
 
 const welcomeMessage =
-  `🔥 Olá! Seja bem-vindo ao *Tiquinho Espetinhos*! 😋
+  `🔥 Opa! Seja bem-vindo ao *Tiquinho Espetinhos*! 😋
 
-Posso te mostrar o cardápio ou você pode fazer seu pedido por aqui mesmo.
+Bateu a fome? Por aqui você monta seu pedido rapidinho.
 
-Temos espetinhos, jantinhas, porções, combos, bebidas e outras opções.
+Temos *espetinhos, jantinhas, porções, combos, bebidas* e muito mais. 🔥
 
-O que você gostaria de ver?`;
+👉 Quer ver o *cardápio completo* ou já sabe o que vai pedir?`;
 
 
 // =====================================================
@@ -9731,19 +9736,19 @@ async function processarMensagem(
   }
 
   // ---------------------------------------------------
-  // PRIMEIRA MENSAGEM / SAUDAÇÃO
+   // ---------------------------------------------------
+  // SAUDAÇÃO PURA
+  // ---------------------------------------------------
+  //
+  // "Oi", "Opaaa", "Bom dia", "Boa noite" etc.
+  // recebem a abertura mesmo que já exista histórico.
+  //
+  // Mensagens com intenção junto da saudação, como:
+  // "Opa quero 2 carnes"
+  // continuam normalmente para o motor.
   // ---------------------------------------------------
 
-  const historico =
-    obterHistorico(
-      phone
-    );
-
-  const primeiraMensagem =
-    historico.length === 0;
-
   if (
-    primeiraMensagem &&
     ehSaudacaoPura(
       userMessage
     )
