@@ -365,7 +365,21 @@
         { "id": "gel_pacoquinha", "nome": "Paçoquinha", "preco": 6.00, "disponivel": true, "imagem": null },
         { "id": "gel_pudim", "nome": "Pudim", "preco": 6.00, "disponivel": true, "imagem": null },
         { "id": "gel_nutella", "nome": "Nutella", "preco": 6.00, "disponivel": true, "imagem": null },
-        { "id": "gel_chocolate_branco", "nome": "Chocolate Branco", "preco": 6.00, "disponivel": true, "imagem": null },
+        {
+  "id": "gel_chocolate_branco",
+  "nome": "Chocolate Branco",
+  "preco": 6.00,
+  "disponivel": true,
+  "aliases": [
+    "chocolate",
+    "geladinho chocolate",
+    "geladinho de chocolate",
+    "chocolate branco",
+    "geladinho chocolate branco",
+    "geladinho de chocolate branco"
+  ],
+  "imagem": null
+},
         { "id": "gel_maracuja", "nome": "Maracujá Cremoso", "preco": 6.00, "disponivel": true, "imagem": null }
       ]
     },
