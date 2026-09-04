@@ -2306,14 +2306,27 @@ function opcaoObrigatoria(
     return false;
   }
 
+  // Se o cardápio disser explicitamente que NÃO é obrigatória,
+  // respeitamos.
   if (
     produto?.opcaoObrigatoria ===
-    true
+    false
+  ) {
+    return false;
+  }
+
+  // Havendo mais de uma opção, o cliente precisa escolher.
+  // Ex.: Refrigerante Lata -> Coca, Fanta, Guaraná...
+  if (
+    opcoes.length > 1
   ) {
     return true;
   }
 
-  return false;
+  return (
+    produto?.opcaoObrigatoria ===
+    true
+  );
 }
 
 
@@ -5723,6 +5736,32 @@ function mensagemTemLinguagemCompra(
     return false;
   }
 
+  const marcadoresConsulta = [
+    "qual tem",
+    "quais tem",
+    "qual que tem",
+    "quais que tem",
+    "que sabores tem",
+    "quais sabores",
+    "que opcoes tem",
+    "quais opcoes",
+    "o que tem",
+  ].map(
+    normalizarTexto
+  );
+
+  const pareceConsulta =
+    marcadoresConsulta.some(
+      (marcador) =>
+        msg.includes(
+          marcador
+        )
+    );
+
+  if (pareceConsulta) {
+    return false;
+  }
+
   const marcadores = [
     "quero ",
     "queria ",
@@ -8262,13 +8301,60 @@ function perguntaPagamento(
     estado.aguardando =
       "pagamento";
 
-    return (
-      "Como prefere pagar?\n\n" +
-      "• PIX\n" +
-      "• Dinheiro\n" +
-      "• Cartão\n\n" +
-      "Se quiser dividir entre formas de pagamento, também pode."
-    );
+      const subtotal =
+  calcularSubtotal(
+    estado
+  );
+
+const taxa =
+  calcularTaxaEntrega(
+    estado
+  );
+
+const total =
+  calcularTotalPedido(
+    estado
+  );
+
+const tipoEntrega =
+  normalizarTipoEntrega(
+    estado.entrega?.tipo
+  );
+
+let resumo =
+  "🧾 *Seu pedido até aqui*\n\n" +
+  gerarResumoItens(
+    estado
+  ) +
+  "\n\n" +
+  `Subtotal: ${formatarReal(subtotal)}\n`;
+
+if (
+  tipoEntrega === "retirada"
+) {
+  resumo +=
+    "Retirada: sem taxa de entrega\n";
+} else if (
+  taxa === 0
+) {
+  resumo +=
+    "Entrega: *GRÁTIS*\n";
+} else {
+  resumo +=
+    `Entrega: ${formatarReal(taxa)}\n`;
+}
+
+resumo +=
+  `*Total: ${formatarReal(total)}*\n\n`;
+
+return (
+  resumo +
+  "Como prefere pagar?\n\n" +
+  "• PIX\n" +
+  "• Dinheiro\n" +
+  "• Cartão\n\n" +
+  "Se quiser dividir entre formas de pagamento, também pode."
+);
   }
 
   if (
