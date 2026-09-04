@@ -5342,6 +5342,122 @@ function validarAcoesIA(
       }
     }
 
+    // -------------------------------------------------
+    // 5. CORRESPONDENCIA PARCIAL POR PALAVRAS RELEVANTES
+    //
+    // Permite linguagem natural:
+    // "bolinho"
+    // "costelinha"
+    // "polenta frita"
+    //
+    // Mas somente quando o produto indicado pela IA
+    // for o melhor candidato sem empate.
+    // -------------------------------------------------
+
+    const palavrasIgnoradas =
+      new Set([
+        "de",
+        "da",
+        "do",
+        "das",
+        "dos",
+        "com",
+        "sem",
+        "para",
+        "por",
+        "uma",
+        "um",
+        "frito",
+        "frita",
+        "caseira",
+        "caseiro",
+        "recheada",
+        "recheado",
+      ]);
+
+    function palavrasRelevantesProduto(
+      item
+    ) {
+      return normalizarComparacao(
+        item.nome
+      )
+        .split(" ")
+        .filter(
+          (parte) =>
+            parte.length >= 4 &&
+            !palavrasIgnoradas.has(
+              parte
+            )
+        );
+    }
+
+    const palavrasAlvo =
+      palavrasRelevantesProduto(
+        produto
+      );
+
+    const pontosAlvo =
+      palavrasAlvo.filter(
+        (parte) =>
+          mensagem.includes(
+            parte
+          )
+      ).length;
+
+    if (pontosAlvo > 0) {
+      let maiorPontuacao = 0;
+      let vencedores = [];
+
+      for (
+        const candidato of
+        produtosDelivery
+      ) {
+        const palavrasCandidato =
+          palavrasRelevantesProduto(
+            candidato
+          );
+
+        const pontos =
+          palavrasCandidato.filter(
+            (parte) =>
+              mensagem.includes(
+                parte
+              )
+          ).length;
+
+        if (
+          pontos >
+          maiorPontuacao
+        ) {
+          maiorPontuacao =
+            pontos;
+
+          vencedores = [
+            candidato,
+          ];
+        } else if (
+          pontos ===
+            maiorPontuacao &&
+          pontos > 0
+        ) {
+          vencedores.push(
+            candidato
+          );
+        }
+      }
+
+      if (
+        maiorPontuacao > 0 &&
+        vencedores.length === 1 &&
+        vencedores[0].id ===
+          produto.id
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+
     return false;
   }
 
