@@ -4921,6 +4921,10 @@ function validarAcoesIA(
         "$1g"
       )
       .replace(
+        /\b([a-z]{3,})oes\b/g,
+        "$1ao"
+      )
+      .replace(
         /\s+/g,
         " "
       )
