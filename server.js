@@ -5221,6 +5221,123 @@ function validarAcoesIA(
       }
     }
 
+    // -------------------------------------------------
+    // 4. Nome/familia + preco unico autoriza.
+    //
+    // Exemplo:
+    // "medalhao de 20"
+    //
+    // Se varios produtos pertencem a familia Medalhao,
+    // mas somente um deles custa 20, esse preco pode
+    // desambiguar o produto.
+    //
+    // Preco sozinho NUNCA autoriza.
+    // -------------------------------------------------
+
+    const precoProduto =
+      numeroSeguro(
+        produto.preco
+      );
+
+    if (
+      precoProduto !== null
+    ) {
+      const precoTexto =
+        String(
+          precoProduto
+        ).replace(
+          ".",
+          ","
+        );
+
+      const precoInteiro =
+        Number.isInteger(
+          precoProduto
+        )
+          ? String(
+              precoProduto
+            )
+          : null;
+
+      const mencionaPreco =
+        mensagem.includes(
+          precoTexto
+        ) ||
+        (
+          precoInteiro &&
+          mensagem.includes(
+            precoInteiro
+          )
+        );
+
+      if (mencionaPreco) {
+        const palavrasProduto =
+          nomeProduto
+            .split(" ")
+            .filter(
+              (parte) =>
+                parte.length >= 4 &&
+                ![
+                  "carne",
+                  "frango",
+                  "bacon",
+                  "queijo",
+                  "com",
+                  "para",
+                ].includes(
+                  parte
+                )
+            );
+
+        const temFamilia =
+          palavrasProduto.some(
+            (parte) =>
+              mensagem.includes(
+                parte
+              )
+          );
+
+        if (temFamilia) {
+          const candidatos =
+            produtosDelivery.filter(
+              (outroProduto) => {
+                const outroPreco =
+                  numeroSeguro(
+                    outroProduto.preco
+                  );
+
+                if (
+                  outroPreco !==
+                  precoProduto
+                ) {
+                  return false;
+                }
+
+                const outroNome =
+                  normalizarComparacao(
+                    outroProduto.nome
+                  );
+
+                return palavrasProduto.some(
+                  (parte) =>
+                    outroNome.includes(
+                      parte
+                    )
+                );
+              }
+            );
+
+          if (
+            candidatos.length === 1 &&
+            candidatos[0].id ===
+              produto.id
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+
     return false;
   }
 
@@ -5868,6 +5985,40 @@ Exemplos:
 Se o cliente identificar o produto, mas houver mais de uma opcao possivel
 e ele NAO disser qual deseja, deixe "opcao": null.
 Nao escolha uma opcao no chute.
+
+REGRA DE PRECO COMO DESAMBIGUACAO:
+
+O preco pode ser usado como pista para identificar um produto quando o cliente
+tambem mencionar claramente o nome, familia ou parte reconhecivel desse produto.
+
+Se existirem varios produtos semelhantes e apenas UM deles tiver o preco
+mencionado pelo cliente, escolha esse produto.
+
+Exemplo:
+
+"quero 2 medalhao de 20"
+= existem varios produtos Medalhao
+= apenas Medalhao de Carne, Bacon e Queijo custa R$ 20
+= adicionar 2 unidades de Medalhao de Carne, Bacon e Queijo.
+
+"quero o medalhao de 17"
+= adicionar Medalhao de Carne de Boi.
+
+"quero medalhao de 15"
+= adicionar Medalhao de Frango.
+
+IMPORTANTE:
+O preco SOZINHO nao autoriza escolher produto.
+
+"quero um de 20"
+= NAO escolher produto.
+
+So use preco para desambiguar quando a mensagem tambem identificar claramente
+a familia, nome ou parte reconhecivel do produto.
+
+Nunca invente preco.
+Use somente os precos presentes em PRODUTOS VALIDOS.
+Se mais de um produto compativel tiver o mesmo preco, nao escolha no chute.
 
 IMPORTANTE:
 Essa regra NÃO autoriza escolher um produto quando o cliente informou
