@@ -5831,6 +5831,44 @@ Exemplos:
 "quero medalhão de carne bacon e queijo"
 = adicionar Medalhão de Carne, Bacon e Queijo.
 
+REGRA DE OPCAO DO PRODUTO:
+
+Quando o produto escolhido possuir "opcoes" no cardapio
+E o cliente mencionar claramente uma dessas opcoes,
+preencha tambem o campo "opcao" da acao.
+
+Use SEMPRE o nome EXATO da opcao existente no cardapio.
+
+A opcao faz parte da configuracao do produto.
+Nao crie outro produto por causa dela.
+Nao invente opcoes.
+
+Exemplos:
+
+"quero uma coca 2l"
+= adicionar Refrigerante 2L
+= opcao: "Coca-Cola"
+
+"quero coca zero 2l"
+= adicionar Refrigerante 2L
+= opcao: "Coca-Cola Zero"
+
+"quero guarana 600"
+= adicionar Refrigerante 600ml
+= opcao: "Guaraná"
+
+"quero fanta laranja 2 litros"
+= adicionar Refrigerante 2L
+= opcao: "Fanta Laranja"
+
+"quero agua sem gas"
+= adicionar Agua com ou sem Gas
+= opcao: "Sem gás"
+
+Se o cliente identificar o produto, mas houver mais de uma opcao possivel
+e ele NAO disser qual deseja, deixe "opcao": null.
+Nao escolha uma opcao no chute.
+
 IMPORTANTE:
 Essa regra NÃO autoriza escolher um produto quando o cliente informou
 somente uma categoria genérica ou quando existem várias opções possíveis.
