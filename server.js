@@ -5167,6 +5167,72 @@ function validarAcoesIA(
     }
 
     // -------------------------------------------------
+    // 2.5. Opção explícita + pista do produto autoriza.
+    //
+    // Exemplo:
+    // produto = Refrigerante Lata
+    // opção   = Fanta Laranja
+    // mensagem = "quero fanta laranja lata"
+    //
+    // A opção sozinha não autoriza o SKU, porque
+    // "Fanta Laranja" pode existir em outros tamanhos.
+    // -------------------------------------------------
+
+    const opcoesProduto =
+      listarOpcoesProduto(
+        produto
+      );
+
+    const opcoesPresentes =
+      opcoesProduto.filter(
+        (opcao) => {
+          const nome =
+            normalizarComparacao(
+              nomeOpcao(opcao)
+            );
+
+          return (
+            nome &&
+            mensagem.includes(
+              nome
+            )
+          );
+        }
+      );
+
+    if (
+      opcoesPresentes.length === 1
+    ) {
+      const palavrasIdentificadoras =
+        nomeProduto
+          .split(" ")
+          .filter(
+            (parte) =>
+              parte.length >= 2 &&
+              ![
+                "refrigerante",
+                "refri",
+              ].includes(
+                parte
+              )
+          );
+
+      const temPistaProduto =
+        palavrasIdentificadoras.some(
+          (parte) =>
+            mensagem.includes(
+              parte
+            )
+        );
+
+      if (
+        temPistaProduto
+      ) {
+        return true;
+      }
+    }
+
+    // -------------------------------------------------
     // 3. Alias compartilhado + informação específica.
     //
     // Exemplo:
@@ -5567,6 +5633,44 @@ function validarAcoesIA(
       quantidade = 99;
     }
 
+    let opcaoValidada =
+      acao.opcao ||
+      null;
+
+    // Se a IA identificou o produto, mas esqueceu
+    // a opção, tentamos extraí-la diretamente da mensagem.
+    if (
+      !opcaoValidada
+    ) {
+      const opcoesEncontradas =
+        listarOpcoesProduto(
+          produto
+        ).filter(
+          (opcao) => {
+            const nome =
+              normalizarComparacao(
+                nomeOpcao(opcao)
+              );
+
+            return (
+              nome &&
+              mensagem.includes(
+                nome
+              )
+            );
+          }
+        );
+
+      if (
+        opcoesEncontradas.length === 1
+      ) {
+        opcaoValidada =
+          nomeOpcao(
+            opcoesEncontradas[0]
+          );
+      }
+    }
+
     validas.push({
       tipo:
         tipo ===
@@ -5583,9 +5687,8 @@ function validarAcoesIA(
         acao.variacao ||
         null,
 
-      opcao:
-        acao.opcao ||
-        null,
+            opcao:
+        opcaoValidada,
 
       escolhas:
         (
@@ -8236,44 +8339,59 @@ function perguntaEntrega(
     return null;
   }
 
-  if (
-    !String(
-      entrega.endereco || ""
-    ).trim()
-  ) {
-    estado.aguardando =
-      "endereco";
+ if (
+  !String(
+    entrega.endereco || ""
+  ).trim()
+) {
+  estado.aguardando =
+    "endereco";
 
-    return (
-      "Qual é a *rua/avenida* para entrega?"
-    );
-  }
+  return (
+    "Qual é o *endereço para entrega*?\n" +
+    "Pode mandar *rua, número e bairro* na mesma mensagem."
+  );
+}
 
-  if (
-    !String(
-      entrega.numero || ""
-    ).trim()
-  ) {
-    estado.aguardando =
-      "numero";
+const faltaNumero =
+  !String(
+    entrega.numero || ""
+  ).trim();
 
-    return (
-      "Qual o *número* do endereço?"
-    );
-  }
+const faltaBairro =
+  !String(
+    entrega.bairro || ""
+  ).trim();
 
-  if (
-    !String(
-      entrega.bairro || ""
-    ).trim()
-  ) {
-    estado.aguardando =
-      "bairro";
+if (
+  faltaNumero &&
+  faltaBairro
+) {
+  estado.aguardando =
+    "endereco";
 
-    return (
-      "Qual é o *bairro*?"
-    );
-  }
+  return (
+    "Qual é o *número e o bairro*?"
+  );
+}
+
+if (faltaNumero) {
+  estado.aguardando =
+    "numero";
+
+  return (
+    "Qual é o *número* do endereço?"
+  );
+}
+
+if (faltaBairro) {
+  estado.aguardando =
+    "bairro";
+
+  return (
+    "Qual é o *bairro*?"
+  );
+}
 
   estado.aguardando =
     null;
